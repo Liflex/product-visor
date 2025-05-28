@@ -1,4 +1,7 @@
+// src/components/ProductAll.jsx
+
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { getProducts } from '../services/productService';
 
 const ProductAll = () => {
@@ -7,21 +10,20 @@ const ProductAll = () => {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        // Загрузка категорий из бэкенда
         const fetchProducts = async () => {
             try {
                 const data = await getProducts();
                 setProducts(data);
                 setLoading(false);
             } catch (error) {
-                console.error('Failed to fetch categories:', error);
+                console.error('Failed to fetch products:', error);
                 setError(error);
                 setLoading(false);
             }
         };
 
         fetchProducts();
-        }, []);
+    }, []);
 
     if (loading) {
         return (
@@ -68,6 +70,11 @@ const ProductAll = () => {
                                 ) : (
                                     <p className="text-gray-400">Нет атрибутов</p>
                                 )}
+                            </div>
+                            <div className="mt-4">
+                                <Link to={`/edit-product/${product.id}`} className="text-indigo-500 hover:text-indigo-700">
+                                    Редактировать
+                                </Link>
                             </div>
                         </div>
                     </div>

@@ -1,30 +1,82 @@
-// src/components/ProductForm.jsx
+// src/components/EditProduct.jsx
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate, useParams } from 'react-router-dom';
 
-const ProductForm = ({ categories }) => {
+const EditProduct = ({ categories }) => {
+    const { productId } = useParams();
+    const navigate = useNavigate();
+
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [productAttributes, setProductAttributes] = useState({});
     const [productName, setProductName] = useState('');
     const [dynamicFields, setDynamicFields] = useState({});
-    const [imageFile, setImageFile] = useState(null); // Для хранения выбранного файла изображения
+    const [attributeIds, setAttributeIds] = useState({}); // Новое состояние для хранения id атрибутов
+    const [imageFile, setImageFile] = useState(null);
+    const [currentImageUrl, setCurrentImageUrl] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null); // Для хранения URL предварительного просмотра изображения
+
+    useEffect(() => {
+        const fetchProduct = async () => {
+            try {
+                const response = await axios.get(`http://localhost:8085/api/v1/product/${productId}`);
+                const product = response.data;
+
+                setProductName(product.name);
+                setSelectedCategory(categories.find(cat => cat.id === product.category.id));
+                setCurrentImageUrl(`http://localhost:8085/api/v1/image/${product.imageUrl}`);
+
+                const initialAttributes = {};
+                const initialAttributeIds = {}; // Новое состояние для хранения id атрибутов
+
+                product.productAttributeValues.forEach(attrValue => {
+                    if (initialAttributes[attrValue.attribute.name]) {
+                        if (!Array.isArray(initialAttributes[attrValue.attribute.name])) {
+                            initialAttributes[attrValue.attribute.name] = [initialAttributes[attrValue.attribute.name]];
+                        }
+                        initialAttributes[attrValue.attribute.name].push(attrValue.value);
+                    } else {
+                        initialAttributes[attrValue.attribute.name] = attrValue.value;
+                    }
+
+                    // Сохраняем id атрибутов
+                    if (initialAttributeIds[attrValue.attribute.name]) {
+                        if (!Array.isArray(initialAttributeIds[attrValue.attribute.name])) {
+                            initialAttributeIds[attrValue.attribute.name] = [initialAttributeIds[attrValue.attribute.name]];
+                        }
+                        initialAttributeIds[attrValue.attribute.name].push(attrValue.id);
+                    } else {
+                        initialAttributeIds[attrValue.attribute.name] = attrValue.id;
+                    }
+                });
+
+                setProductAttributes(initialAttributes);
+                setDynamicFields(initialAttributes);
+                setAttributeIds(initialAttributeIds); // Устанавливаем id атрибутов
+            } catch (error) {
+                console.error('Failed to fetch product:', error);
+            }
+        };
+
+        if (categories.length > 0) {
+            fetchProduct();
+        }
+    }, [categories, productId]);
 
     useEffect(() => {
         if (selectedCategory) {
             const initialAttributes = {};
             selectedCategory.attributes.forEach(attr => {
                 if (attr.multiple) {
-                    initialAttributes[attr.name] = [''];
+                    initialAttributes[attr.name] = dynamicFields[attr.name] || [''];
                 } else {
-                    initialAttributes[attr.name] = '';
+                    initialAttributes[attr.name] = dynamicFields[attr.name] || '';
                 }
             });
             setProductAttributes(initialAttributes);
-            setDynamicFields(initialAttributes);
         }
-    }, [selectedCategory]);
+    }, [selectedCategory, dynamicFields]);
 
     const handleCategoryChange = (event) => {
         const categoryId = parseInt(event.target.value, 10);
@@ -79,28 +131,36 @@ const ProductForm = ({ categories }) => {
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-        // Собираем данные о товаре
+
         const productData = {
             name: productName,
-            category: {  // Изменено с categoryId на вложенный объект category
+            category: {
                 id: selectedCategory.id
             },
             productAttributeValues: Object.entries(dynamicFields).map(([key, value]) => {
                 const attribute = selectedCategory.attributes.find(attr => attr.name === key);
+                const attrId = attributeIds[key]; // Получаем id атрибута
+
                 if (Array.isArray(value)) {
-                    return value.map(val => ({
-                        attribute: {
-                            id: attribute.id,
-                            name: attribute.name,
-                            nameRus: attribute.nameRus,
-                            type: attribute.type,
-                            required: attribute.required,
-                            multiple: attribute.multiple
-                        },
-                        value: val
-                    }));
+                    return value.map((val, index) => {
+                        const id = Array.isArray(attrId) ? attrId[index] : null; // Получаем id для каждого значения
+                        return {
+                            id: id, // Добавляем id
+                            attribute: {
+                                id: attribute.id,
+                                name: attribute.name,
+                                nameRus: attribute.nameRus,
+                                type: attribute.type,
+                                required: attribute.required,
+                                multiple: attribute.multiple
+                            },
+                            value: val,
+                            productId: productId
+                        };
+                    });
                 } else {
                     return {
+                        id: attrId, // Добавляем id
                         attribute: {
                             id: attribute.id,
                             name: attribute.name,
@@ -109,32 +169,37 @@ const ProductForm = ({ categories }) => {
                             required: attribute.required,
                             multiple: attribute.multiple
                         },
-                        value: value
+                        value: value,
+                        productId: productId
                     };
                 }
             }).flat()
         };
-        // Преобразуем данные в JSON строку
+
         const formData = new FormData();
         formData.append('productData', JSON.stringify(productData));
-        formData.append('image', imageFile);
+        if (imageFile) {
+            formData.append('image', imageFile);
+        }
+
         try {
-            const response = await axios.post('http://localhost:8085/api/v1/product', formData, {
+            const response = await axios.put(`http://localhost:8085/api/v1/product/${productId}`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 }
             });
-            console.log('Product created successfully:', response.data);
-            alert('Товар успешно добавлен!');
+            console.log('Product updated successfully:', response.data);
+            alert('Товар успешно обновлен!');
+            navigate('/all-products');
         } catch (error) {
-            console.error('Error creating product:', error);
-            alert('Ошибка при добавлении товара.');
+            console.error('Error updating product:', error);
+            alert('Ошибка при обновлении товара.');
         }
     };
 
     return (
         <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-4xl">
-            <h2 className="text-2xl font-bold text-white mb-6">Добавление нового товара</h2>
+            <h2 className="text-2xl font-bold text-white mb-6">Редактирование товара</h2>
             <form onSubmit={handleSubmit}>
                 <div className="mb-4">
                     <label htmlFor="productName" className="block text-sm font-medium text-gray-300">Название товара</label>
@@ -270,11 +335,21 @@ const ProductForm = ({ categories }) => {
                     </div>
                 )}
                 <div className="mb-4">
-                    <label htmlFor="image" className="block text-sm font-medium text-gray-300">Изображение товара</label>
+                    <label htmlFor="image" className="block text-sm font-medium text-gray-300">Текущее изображение товара</label>
+                    {currentImageUrl && (
+                        <div className="mb-2">
+                            <img
+                                src={currentImageUrl}
+                                alt="Текущее изображение товара"
+                                className="w-full h-48 object-cover rounded-lg"
+                            />
+                        </div>
+                    )}
+                    <label htmlFor="newImage" className="block text-sm font-medium text-gray-300">Выберите новое изображение (опционально)</label>
                     <input
                         type="file"
-                        id="image"
-                        name="image"
+                        id="newImage"
+                        name="newImage"
                         accept="image/*"
                         onChange={handleImageChange}
                         className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
@@ -283,7 +358,7 @@ const ProductForm = ({ categories }) => {
                         <div className="mt-2">
                             <img
                                 src={previewUrl}
-                                alt="Превью изображения"
+                                alt="Превью нового изображения"
                                 className="w-full h-48 object-cover rounded-lg"
                             />
                         </div>
@@ -293,11 +368,11 @@ const ProductForm = ({ categories }) => {
                     type="submit"
                     className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
                 >
-                    Добавить товар
+                    Сохранить изменения
                 </button>
             </form>
         </div>
     );
 };
 
-export default ProductForm;
+export default EditProduct;
