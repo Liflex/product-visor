@@ -1,0 +1,26 @@
+spring:
+  web:
+    resources:
+      static-locations: F:\images
+  datasource:
+    url: jdbc:postgresql://localhost:5432/postgres
+    username: admin
+    password: 1545
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        default_schema: visor
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+server:
+  port: 8085
+
+file:
+  upload-dir: F:\images

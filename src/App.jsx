@@ -1,35 +1,84 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
+import ProductForm from './components/ProductForm';
+import Home from './components/Home';
+import AllProducts from './components/ProductAll.jsx'; // Новый компонент для отображения всех продуктов
+import { getCategories } from './services/categoryService';
 
-function App() {
-  const [count, setCount] = useState(0)
+const App = () => {
+    const [categories, setCategories] = useState([]);
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    useEffect(() => {
+        // Загрузка категорий из бэкенда
+        const fetchCategories = async () => {
+            try {
+                const data = await getCategories();
+                setCategories(data);
+            } catch (error) {
+                console.error('Failed to fetch categories:', error);
+            }
+        };
 
-export default App
+        fetchCategories();
+    }, []);
+
+
+    // <div className="bg-gray-900 min-h-screen">
+    //     <nav className="bg-gray-800 w-full p-4">
+    //         <div className="container mx-auto flex justify-between items-center">
+    //             <Link to="/" className="text-white text-lg font-bold">Аудит Товаров</Link>
+    //             <ul className="flex space-x-4">
+    //                 <li>
+    //                     <Link to="/" className="text-white hover:text-gray-300">Главная</Link>
+    //                 </li>
+    //                 <li>
+    //                     <Link to="/add-product" className="text-white hover:text-gray-300">Добавить товар</Link>
+    //                 </li>
+    //                 <li>
+    //                     <Link to="/all-products" className="text-white hover:text-gray-300">Показать все продукты</Link>
+    //                 </li>
+    //             </ul>
+    //         </div>
+    //     </nav>
+    //     <main className="container mx-auto px-4 py-8">
+    //         <Routes>
+    //             <Route path="/" element={<Home/>}/>
+    //             <Route path="/add-product" element={<ProductForm categories={categories}/>}/>
+    //             <Route path="/all-products" element={<AllProducts/>}/>
+    //         </Routes>
+    //     </main>
+    // </div>
+
+    return (
+        <Router>
+            <div className="min-h-screen flex items-center justify-center">
+                <nav className="bg-gray-800 w-full p-4">
+                    <div className="container mx-auto flex justify-between items-center">
+                        <Link to="/" className="text-white text-lg font-bold">Аудит Товаров</Link>
+                        <ul className="flex space-x-4">
+                            <li>
+                                <Link to="/" className="text-white hover:text-gray-300">Главная</Link>
+                            </li>
+                            <li>
+                                <Link to="/add-product" className="text-white hover:text-gray-300">Добавить товар</Link>
+                            </li>
+                            <li>
+                                <Link to="/all-products" className="text-white hover:text-gray-300">Показать все
+                                    продукты</Link>
+                            </li>
+                        </ul>
+                    </div>
+                </nav>
+                <main className="container mx-auto px-4 py-8">
+                    <Routes>
+                        <Route path="/" element={<Home/>}/>
+                        <Route path="/add-product" element={<ProductForm categories={categories}/>}/>
+                        <Route path="/all-products" element={<AllProducts/>}/>
+                    </Routes>
+                </main>
+            </div>
+        </Router>
+    );
+};
+
+export default App;
