@@ -119,7 +119,7 @@ const ProductForm = ({ categories }) => {
         formData.append('productData', JSON.stringify(productData));
         formData.append('image', imageFile);
         try {
-            const response = await axios.post('http://localhost:8085/api/v1/product', formData, {
+            const response = await axios.post('http://95.165.130.218:8085/api/v1/product', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 }
