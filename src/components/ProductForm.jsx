@@ -198,6 +198,18 @@ const ProductForm = ({ categories }) => {
                                                     required={attr.required}
                                                 />
                                             )}
+                                            {attr.type === 'integer' && (
+                                                <input
+                                                    type="number"
+                                                    step="1"
+                                                    id={`${attr.name}-${index}`}
+                                                    name={attr.name}
+                                                    value={value}
+                                                    onChange={(e) => handleDynamicFieldChange(e, attr.name, index)}
+                                                    className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                                    required={attr.required}
+                                                />
+                                            )}
                                             {attr.type === 'string' && (
                                                 <input
                                                     type="text"
@@ -235,6 +247,18 @@ const ProductForm = ({ categories }) => {
                                             <input
                                                 type="number"
                                                 step="0.01"
+                                                id={attr.name}
+                                                name={attr.name}
+                                                value={dynamicFields[attr.name]}
+                                                onChange={(e) => handleAttributeChange(e, attr.name)}
+                                                className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                                required={attr.required}
+                                            />
+                                        )}
+                                        {attr.type === 'integer' && (
+                                            <input
+                                                type="number"
+                                                step="1"
                                                 id={attr.name}
                                                 name={attr.name}
                                                 value={dynamicFields[attr.name]}

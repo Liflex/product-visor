@@ -10,10 +10,10 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
         default_schema: visor
         dialect: org.hibernate.dialect.PostgreSQLDialect
         hbm2ddl:
@@ -22,11 +22,10 @@ spring:
           time_zone: UTC
 logging:
   level:
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-    org.hibernate.tool.hbm2ddl: DEBUG
+    org.hibernate.SQL: INFO
+    org.hibernate.type.descriptor.sql.BasicBinder: INFO
 server:
   port: 8085
 
 file:
-  upload-dir: F:\images
+  upload-dir: F:\images 

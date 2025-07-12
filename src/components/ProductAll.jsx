@@ -1,87 +1,217 @@
-// src/components/ProductAll.jsx
+/**
+ * Product List Component
+ * Displays all products with search, filtering, and CRUD operations
+ */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getProducts } from '../services/productService';
+import { useProducts } from '../hooks/use-products.js';
+import { useCategories } from '../hooks/use-categories.js';
+import LoadingSpinner from './ui/loading-spinner.jsx';
+import ErrorMessage from './ui/error-message.jsx';
+import ProductSearch from './search/product-search.jsx';
+import useBarcodeScanner from '../hooks/use-barcode-scanner.js';
+import Notification from './ui/notification.jsx';
+import ProductCard from './ProductCard.jsx';
 
+/**
+ * Product card wrapper for list view
+ * @param {Object} props - Component props
+ * @param {Object} props.product - Product data
+ * @param {Function} props.onDelete - Delete handler
+ * @param {Array} props.customActions - Custom action buttons
+ * @returns {JSX.Element} Product card
+ */
+const ProductCardWrapper = ({ product, onDelete, customActions = [] }) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  /**
+   * Handle product deletion with confirmation
+   */
+  const handleDelete = async () => {
+    if (!window.confirm(`Are you sure you want to delete "${product.name}"?`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await onDelete(product.id);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <ProductCard
+      product={product}
+      variant="card"
+      onDelete={handleDelete}
+      isDeleting={isDeleting}
+      customActions={customActions}
+    />
+  );
+};
+
+/**
+ * Main ProductAll component
+ */
 const ProductAll = () => {
-    const [products, setProducts] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+  const {
+    products,
+    isLoading,
+    error,
+    searchQuery,
+    filters,
+    updateSearchQuery,
+    updateFilters,
+    clearSearchAndFilters,
+    removeProduct,
+    loadProducts,
+    hasProducts,
+    filteredCount,
+    totalProducts
+  } = useProducts();
 
-    useEffect(() => {
-        const fetchProducts = async () => {
-            try {
-                const data = await getProducts();
-                setProducts(data);
-                setLoading(false);
-            } catch (error) {
-                console.error('Failed to fetch products:', error);
-                setError(error);
-                setLoading(false);
-            }
-        };
+  const { categories } = useCategories();
+  
+  // Global barcode scanner
+  const { notification, hideNotification } = useBarcodeScanner({
+    enabled: true
+  });
 
-        fetchProducts();
-    }, []);
-
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center h-screen">
-                <p className="text-xl">Загрузка...</p>
-            </div>
-        );
+  /**
+   * Handle product deletion
+   */
+  const handleDeleteProduct = async (productId) => {
+    const success = await removeProduct(productId);
+    if (!success) {
+      // Error is already handled in the hook
+      return false;
     }
+    return true;
+  };
 
-    if (error) {
-        return (
-            <div className="flex items-center justify-center h-screen">
-                <p className="text-xl text-red-500">Ошибка загрузки данных: {error.message}</p>
-            </div>
-        );
+  /**
+   * Custom actions for product cards
+   */
+  const customActions = [
+    {
+      label: '👁️ View',
+      onClick: (product) => {
+        // Navigate to product detail page
+        window.open(`/product/${product.id}`, '_blank');
+      },
+      className: 'text-blue-400 hover:text-blue-300',
+      title: 'View product details'
+    },
+    {
+      label: '📋 Copy ID',
+      onClick: (product) => {
+        navigator.clipboard.writeText(product.id.toString());
+        // You could show a notification here
+        console.log('Product ID copied:', product.id);
+      },
+      className: 'text-green-400 hover:text-green-300',
+      title: 'Copy product ID to clipboard'
     }
+  ];
 
-    return (
-        <div className="container mx-auto px-4 py-8">
-            <h2 className="text-3xl font-bold mb-6">Список всех товаров</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {products.map(product => (
-                    <div key={product.id} className="bg-gray-800 p-4 rounded-lg shadow-lg">
-                        <img
-                            src={`http://95.165.130.218:8085/api/v1/image/${product.imageUrl}`}
-                            alt={product.name}
-                            className="w-full h-48 object-cover rounded-t-lg"
-                        />
-                        <div className="p-4">
-                            <h3 className="text-xl font-bold mb-2">{product.name}</h3>
-                            <div className="mb-4">
-                                <span className="text-gray-400">Категория:</span> {product.category.name}
-                            </div>
-                            <div className="mb-4">
-                                <span className="text-gray-400">Атрибуты:</span>
-                                {product.productAttributeValues && product.productAttributeValues.length > 0 ? (
-                                    <ul className="list-disc list-inside">
-                                        {product.productAttributeValues.map(attrValue => (
-                                            <li key={attrValue.id}>
-                                                <strong>{attrValue.attribute.nameRus}:</strong> {attrValue.value}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                ) : (
-                                    <p className="text-gray-400">Нет атрибутов</p>
-                                )}
-                            </div>
-                            <div className="mt-4">
-                                <Link to={`/edit-product/${product.id}`} className="text-indigo-500 hover:text-indigo-700">
-                                    Редактировать
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
+  return (
+    <div className="container mx-auto px-4 py-8">
+      {/* Page Header */}
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-3xl font-bold text-white">Product Catalog</h2>
+          <p className="text-gray-400 mt-1">
+            {isLoading ? 'Loading...' : `${filteredCount} of ${totalProducts} products`}
+          </p>
         </div>
-    );
+        <Link
+          to="/add-product"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md transition-colors"
+        >
+          Add Product
+        </Link>
+      </div>
+
+      {/* Search and Filters */}
+      <ProductSearch
+        searchQuery={searchQuery}
+        filters={filters}
+        categories={categories}
+        onSearchChange={updateSearchQuery}
+        onFiltersChange={updateFilters}
+        onClearFilters={clearSearchAndFilters}
+        isLoading={isLoading}
+      />
+
+      {/* Error Display */}
+      {error && (
+        <ErrorMessage
+          message={error}
+          onRetry={loadProducts}
+          onDismiss={() => {/* Could add error dismissal logic here */}}
+        />
+      )}
+
+      {/* Loading State */}
+      {isLoading && !error && (
+        <LoadingSpinner message="Loading products..." />
+      )}
+
+      {/* Products Grid */}
+      {!isLoading && !error && (
+        <>
+          {hasProducts ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {products.map(product => (
+                <ProductCardWrapper
+                  key={product.id}
+                  product={product}
+                  onDelete={handleDeleteProduct}
+                  customActions={customActions}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="text-gray-400 text-lg mb-4">
+                {searchQuery || Object.keys(filters).length > 0 
+                  ? 'No products found matching your criteria'
+                  : 'No products available'
+                }
+              </div>
+              {searchQuery || Object.keys(filters).length > 0 ? (
+                <button
+                  onClick={clearSearchAndFilters}
+                  className="text-indigo-400 hover:text-indigo-300 transition-colors"
+                >
+                  Clear filters to see all products
+                </button>
+              ) : (
+                <Link
+                  to="/add-product"
+                  className="text-indigo-400 hover:text-indigo-300 transition-colors"
+                >
+                  Add your first product
+                </Link>
+              )}
+            </div>
+          )}
+        </>
+      )}
+      
+      {/* Global Notifications */}
+      {notification && (
+        <Notification
+          type={notification.type}
+          message={notification.message}
+          duration={notification.duration}
+          onClose={hideNotification}
+        />
+      )}
+    </div>
+  );
 };
 
 export default ProductAll;
