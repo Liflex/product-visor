@@ -97,7 +97,7 @@ const ProductSearch = ({
   return (
     <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium text-white">Search Products</h3>
+        <h3 className="text-lg font-medium text-white">Поиск продуктов</h3>
         <div className="flex items-center space-x-2">
           {hasActiveFilters && (
             <button
@@ -106,7 +106,7 @@ const ProductSearch = ({
               className="text-sm text-gray-400 hover:text-white transition-colors"
               disabled={isLoading}
             >
-              Clear All
+              Очистить все
             </button>
           )}
           <button
@@ -114,7 +114,7 @@ const ProductSearch = ({
             onClick={() => setIsExpanded(!isExpanded)}
             className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
           >
-            {isExpanded ? 'Hide Filters' : 'Show Filters'}
+            {isExpanded ? 'Скрыть фильтры' : 'Показать фильтры'}
           </button>
         </div>
       </div>
@@ -123,7 +123,7 @@ const ProductSearch = ({
       <div className="mb-4">
         <InputField
           type="text"
-          placeholder="Search by name, category, or attributes..."
+          placeholder="Поиск по названию, категории или атрибутам..."
           value={localSearchQuery}
           onChange={handleSearchChange}
           inputProps={{
@@ -135,13 +135,13 @@ const ProductSearch = ({
       {/* Advanced Filters */}
       {isExpanded && (
         <div className="border-t border-gray-700 pt-4">
-          <h4 className="text-md font-medium text-gray-300 mb-3">Advanced Filters</h4>
+          <h4 className="text-md font-medium text-gray-300 mb-3">Расширенные фильтры</h4>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Category Filter */}
             <SelectField
-              label="Category"
-              placeholder="All Categories"
+              label="Категория"
+              placeholder="Все категории"
               options={categoryOptions}
               value={localFilters.categoryId || ''}
               onChange={(e) => handleFilterChange('categoryId', parseInt(e.target.value) || '')}
@@ -152,9 +152,9 @@ const ProductSearch = ({
             {/* For now, we'll add a few common ones for contact lenses */}
             
             <InputField
-              label="Brand"
+              label="Бренд"
               type="text"
-              placeholder="Filter by brand..."
+              placeholder="Фильтр по бренду..."
               value={localFilters.brand || ''}
               onChange={(e) => handleFilterChange('brand', e.target.value)}
               inputProps={{
@@ -163,9 +163,9 @@ const ProductSearch = ({
             />
 
             <InputField
-              label="Power (Dioptries)"
+              label="Сила (Диоптрии)"
               type="text"
-              placeholder="e.g., -2.00, +1.50"
+              placeholder="например, -2.00, +1.50"
               value={localFilters.power || ''}
               onChange={(e) => handleFilterChange('power', e.target.value)}
               inputProps={{
@@ -174,9 +174,9 @@ const ProductSearch = ({
             />
 
             <InputField
-              label="Color"
+              label="Цвет"
               type="text"
-              placeholder="Filter by color..."
+              placeholder="Фильтр по цвету..."
               value={localFilters.color || ''}
               onChange={(e) => handleFilterChange('color', e.target.value)}
               inputProps={{
@@ -185,12 +185,12 @@ const ProductSearch = ({
             />
 
             <SelectField
-              label="Expiry Status"
-              placeholder="All Products"
+              label="Статус срока годности"
+              placeholder="Все продукты"
               options={[
-                { value: 'valid', label: 'Valid (Not Expired)' },
-                { value: 'expiring_soon', label: 'Expiring Soon (30 days)' },
-                { value: 'expired', label: 'Expired' }
+                { value: 'valid', label: 'Действительный (Не просрочен)' },
+                { value: 'expiring_soon', label: 'Скоро истекает (30 дней)' },
+                { value: 'expired', label: 'Просрочен' }
               ]}
               value={localFilters.expiryStatus || ''}
               onChange={(e) => handleFilterChange('expiryStatus', e.target.value)}
@@ -198,14 +198,14 @@ const ProductSearch = ({
             />
 
             <SelectField
-              label="Sort By"
-              placeholder="Default Order"
+              label="Сортировка"
+              placeholder="По умолчанию"
               options={[
-                { value: 'name_asc', label: 'Name (A-Z)' },
-                { value: 'name_desc', label: 'Name (Z-A)' },
-                { value: 'category_asc', label: 'Category (A-Z)' },
-                { value: 'expiry_date_asc', label: 'Expiry Date (Earliest)' },
-                { value: 'expiry_date_desc', label: 'Expiry Date (Latest)' }
+                { value: 'name_asc', label: 'Название (А-Я)' },
+                { value: 'name_desc', label: 'Название (Я-А)' },
+                { value: 'category_asc', label: 'Категория (А-Я)' },
+                { value: 'expiry_date_asc', label: 'Дата истечения (Ранняя)' },
+                { value: 'expiry_date_desc', label: 'Дата истечения (Поздняя)' }
               ]}
               value={localFilters.sortBy || ''}
               onChange={(e) => handleFilterChange('sortBy', e.target.value)}

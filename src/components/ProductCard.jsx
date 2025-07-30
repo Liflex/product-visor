@@ -173,7 +173,7 @@ const ProductCard = ({
                   to={`/edit-product/${product.id}`}
                   className="text-indigo-400 hover:text-indigo-300 text-sm font-medium transition-colors"
                 >
-                  Edit
+                  Редактировать
                 </Link>
                 
                 {/* Custom Actions */}
@@ -196,7 +196,7 @@ const ProductCard = ({
                   disabled={isDeleting}
                   className="text-red-400 hover:text-red-300 text-sm font-medium transition-colors disabled:opacity-50"
                 >
-                  Delete
+                  Удалить
                 </button>
               )}
             </div>

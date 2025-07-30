@@ -89,7 +89,7 @@ const MarketSelector = ({ selectedMarkets, onMarketsChange, quantity, onQuantity
     };
 
     if (loading) {
-        return <div className="text-gray-500">Loading markets...</div>;
+        return <div className="text-gray-500">Загрузка маркетов...</div>;
     }
 
     const hasMarkets = localMarkets.length > 0;
@@ -104,12 +104,12 @@ const MarketSelector = ({ selectedMarkets, onMarketsChange, quantity, onQuantity
     return (
         <div className="space-y-4">
             <div className="border-b border-gray-300 pb-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Markets</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Маркеты</h3>
                 
                 {/* Ручное управление количеством */}
                 <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Total Quantity
+                        Общее количество
                     </label>
                     <input
                         type="number"
@@ -124,12 +124,12 @@ const MarketSelector = ({ selectedMarkets, onMarketsChange, quantity, onQuantity
                     />
                     {(hasMarkets || (selectedMarkets && selectedMarkets.length > 0)) && (
                         <p className="text-sm text-gray-500 mt-1">
-                            Quantity is calculated from markets
+                            Количество рассчитывается из маркетов
                         </p>
                     )}
                     {!hasMarkets && (!selectedMarkets || selectedMarkets.length === 0) && (
                         <p className="text-sm text-gray-500 mt-1">
-                            Enter quantity manually
+                            Введите количество вручную
                         </p>
                     )}
                 </div>
@@ -163,7 +163,7 @@ const MarketSelector = ({ selectedMarkets, onMarketsChange, quantity, onQuantity
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Quantity
+                                                Количество
                                             </label>
                                             <input
                                                 type="number"
@@ -175,7 +175,7 @@ const MarketSelector = ({ selectedMarkets, onMarketsChange, quantity, onQuantity
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Price
+                                                Цена
                                             </label>
                                             <input
                                                 type="number"

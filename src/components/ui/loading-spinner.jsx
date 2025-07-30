@@ -15,7 +15,7 @@ import React from 'react';
  */
 const LoadingSpinner = ({ 
   size = 'medium', 
-  message = 'Loading...', 
+  message = 'Загрузка...', 
   overlay = false 
 }) => {
   const sizeClasses = {

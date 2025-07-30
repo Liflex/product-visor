@@ -179,7 +179,7 @@ const ImageUpload = ({ file, onChange, currentImageUrl, previewUrl, error, hasEr
   return (
     <div className="mb-4">
       <label className="block text-sm font-medium text-gray-300 mb-2">
-        Product Image
+        Изображение продукта
       </label>
       
       <div className="space-y-4">
@@ -203,7 +203,7 @@ const ImageUpload = ({ file, onChange, currentImageUrl, previewUrl, error, hasEr
           {/* Current Image */}
           {currentImageUrl && !previewUrl && (
             <div>
-              <p className="text-sm text-gray-300 mb-2">Current Image:</p>
+              <p className="text-sm text-gray-300 mb-2">Текущее изображение:</p>
               <img
                 src={currentImageUrl}
                 alt="Current"
@@ -215,7 +215,7 @@ const ImageUpload = ({ file, onChange, currentImageUrl, previewUrl, error, hasEr
           {/* New Preview */}
           {previewUrl && (
             <div>
-              <p className="text-sm text-gray-300 mb-2">New Image:</p>
+              <p className="text-sm text-gray-300 mb-2">Новое изображение:</p>
               <img
                 src={previewUrl}
                 alt="Preview"
@@ -580,8 +580,8 @@ const EditProductNew = () => {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <h2 className="text-3xl font-bold text-white">Edit Product</h2>
-          <p className="text-gray-400 mt-1">Update product information and attributes</p>
+          <h2 className="text-3xl font-bold text-white">Редактировать продукт</h2>
+          <p className="text-gray-400 mt-1">Обновите информацию о продукте и атрибуты</p>
         </div>
 
         {/* Form */}
@@ -592,9 +592,9 @@ const EditProductNew = () => {
           }}>
             {/* Product Name */}
             <InputField
-              label="Product Name"
+              label="Название продукта"
               type="text"
-              placeholder="Enter product name..."
+              placeholder="Введите название продукта..."
               required
               value={values.name}
               onChange={handleFieldChange('name')}
@@ -622,8 +622,8 @@ const EditProductNew = () => {
 
             {/* Category Selection */}
             <SelectField
-              label="Category"
-              placeholder="Select a category"
+              label="Категория"
+              placeholder="Выберите категорию"
               options={categoryOptions}
               required
               value={selectedCategory?.id || ''}
@@ -655,7 +655,7 @@ const EditProductNew = () => {
             {selectedCategory && selectedCategory.attributes && (
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-white border-b border-gray-700 pb-2">
-                  Product Attributes
+                  Атрибуты продукта
                 </h3>
                 
                 {selectedCategory.attributes.map(attribute => (
@@ -679,7 +679,7 @@ const EditProductNew = () => {
                 disabled={isSubmitting}
                 className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {isSubmitting ? 'Updating...' : 'Update Product'}
+                {isSubmitting ? 'Обновление...' : 'Обновить продукт'}
               </button>
             </div>
           </form>
@@ -692,7 +692,7 @@ const EditProductNew = () => {
               className="px-6 py-2 border border-gray-600 text-gray-300 rounded-md hover:bg-gray-700 transition-colors"
               disabled={isSubmitting}
             >
-              Home
+              Главная
             </button>
             
             <button
@@ -701,7 +701,7 @@ const EditProductNew = () => {
               className="px-6 py-2 border border-gray-600 text-gray-300 rounded-md hover:bg-gray-700 transition-colors"
               disabled={isSubmitting}
             >
-              Cancel
+              Отмена
             </button>
           </div>
         </div>

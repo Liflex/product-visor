@@ -9,6 +9,8 @@ import { deleteProduct, getProductById } from '../services/productService.js';
 import LoadingSpinner from './ui/loading-spinner.jsx';
 import ErrorMessage from './ui/error-message.jsx';
 import ProductCard from './ProductCard.jsx';
+import CreateOrderModal from './CreateOrderModal.jsx';
+import useBarcodeScanner from '../hooks/use-barcode-scanner.js';
 
 /**
  * Product Detail Component
@@ -23,6 +25,9 @@ const ProductDetail = () => {
   const [isLoading, setIsLoading] = useState(!location.state?.product);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState('');
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+
+  const { scannedBarcode, resetBarcode } = useBarcodeScanner();
 
   /**
    * Load product data
@@ -34,7 +39,7 @@ const ProductDetail = () => {
       }
 
       if (!productId) {
-        setError('Product ID is required');
+        setError('ID продукта обязателен');
         setIsLoading(false);
         return;
       }
@@ -48,11 +53,11 @@ const ProductDetail = () => {
         if (productData) {
           setProduct(productData);
         } else {
-          setError('Product not found');
+          setError('Продукт не найден');
         }
       } catch (error) {
         console.error('Error loading product:', error);
-        setError('Failed to load product. Please try again.');
+        setError('Не удалось загрузить продукт. Попробуйте еще раз.');
       } finally {
         setIsLoading(false);
       }
@@ -62,12 +67,23 @@ const ProductDetail = () => {
   }, [productId, location.state]);
 
   /**
+   * Handle global barcode scanning for quick product navigation
+   */
+  useEffect(() => {
+    if (scannedBarcode && !isOrderModalOpen) {
+      // Navigate to the scanned product
+      navigate(`/product/${scannedBarcode}`);
+      resetBarcode();
+    }
+  }, [scannedBarcode, navigate, resetBarcode, isOrderModalOpen]);
+
+  /**
    * Handle product deletion
    */
   const handleDelete = async () => {
     if (!product) return;
     
-    if (!confirm('Are you sure you want to delete this product?')) {
+    if (!confirm('Вы уверены, что хотите удалить этот продукт?')) {
       return;
     }
 
@@ -80,7 +96,7 @@ const ProductDetail = () => {
       navigate('/all-products');
     } catch (error) {
       console.error('❌ Error deleting product:', error);
-      setError('Failed to delete product. Please try again.');
+      setError('Не удалось удалить продукт. Попробуйте еще раз.');
     } finally {
       setIsDeleting(false);
     }
@@ -95,6 +111,21 @@ const ProductDetail = () => {
   };
 
   /**
+   * Handle order creation
+   */
+  const handleCreateOrder = () => {
+    setIsOrderModalOpen(true);
+  };
+
+  /**
+   * Handle order created callback
+   */
+  const handleOrderCreated = () => {
+    // Можно добавить уведомление об успешном создании заказа
+    console.log('✅ Order created successfully');
+  };
+
+  /**
    * Format attribute values for display
    */
   const formatAttributeValue = (attrValue) => {
@@ -103,7 +134,7 @@ const ProductDetail = () => {
 
   // Loading state
   if (isLoading) {
-    return <LoadingSpinner message="Loading product..." />;
+    return <LoadingSpinner message="Загрузка продукта..." />;
   }
 
   // Error state
@@ -113,7 +144,7 @@ const ProductDetail = () => {
 
   // Product not found
   if (!product) {
-    return <ErrorMessage message="Product not found" />;
+    return <ErrorMessage message="Продукт не найден" />;
   }
 
   return (
@@ -133,11 +164,19 @@ const ProductDetail = () => {
             {/* Action Buttons */}
             <div className="flex space-x-3">
               <button
+                onClick={handleCreateOrder}
+                disabled={isDeleting}
+                className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
+              >
+                🛒 Оформить заказ
+              </button>
+              
+              <button
                 onClick={handleEdit}
                 disabled={isDeleting}
                 className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
               >
-                ✏️ Edit
+                ✏️ Редактировать
               </button>
               
               <button
@@ -145,7 +184,7 @@ const ProductDetail = () => {
                 disabled={isDeleting}
                 className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
               >
-                {isDeleting ? '🗑️ Deleting...' : '🗑️ Delete'}
+                {isDeleting ? '🗑️ Удаление...' : '🗑️ Удалить'}
               </button>
             </div>
           </div>
@@ -167,16 +206,24 @@ const ProductDetail = () => {
             onClick={() => navigate('/')}
             className="px-6 py-2 border border-gray-600 text-gray-300 rounded-md hover:bg-gray-700 transition-colors shadow-md"
           >
-            🏠 Home
+            🏠 Главная
           </button>
           
           <button
             onClick={() => navigate('/all-products')}
             className="px-6 py-2 border border-gray-600 text-gray-300 rounded-md hover:bg-gray-700 transition-colors shadow-md"
           >
-            📋 All Products
+            📋 Все продукты
           </button>
         </div>
+
+        {/* Create Order Modal */}
+        <CreateOrderModal
+          isOpen={isOrderModalOpen}
+          onClose={() => setIsOrderModalOpen(false)}
+          product={product}
+          onOrderCreated={handleOrderCreated}
+        />
       </div>
     </div>
   );

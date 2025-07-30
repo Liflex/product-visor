@@ -61,23 +61,23 @@ const Home = () => {
 
   const features = [
     {
-      title: 'Smart Inventory',
-      description: 'Track contact lens inventory with dynamic attributes like power, color, and expiry dates.',
+      title: 'Умный инвентарь',
+      description: 'Отслеживайте инвентарь контактных линз с динамическими атрибутами: сила, цвет и сроки годности.',
       icon: '📦'
     },
     {
-      title: 'Advanced Search',
-      description: 'Find products quickly with powerful search and filtering capabilities.',
+      title: 'Продвинутый поиск',
+      description: 'Быстро находите продукты с мощными возможностями поиска и фильтрации.',
       icon: '🔍'
     },
     {
-      title: 'Easy Management',
-      description: 'Add, edit, and delete products with an intuitive interface and real-time validation.',
+      title: 'Простое управление',
+      description: 'Добавляйте, редактируйте и удаляйте продукты с интуитивным интерфейсом и валидацией в реальном времени.',
       icon: '⚡'
     },
     {
-      title: 'Visual Preview',
-      description: 'Upload and preview product images with automatic optimization.',
+      title: 'Визуальный предпросмотр',
+      description: 'Загружайте и предварительно просматривайте изображения продуктов с автоматической оптимизацией.',
       icon: '🖼️'
     }
   ];
@@ -88,24 +88,24 @@ const Home = () => {
         {/* Hero Section */}
         <div className="text-center py-12">
         <h1 className="text-4xl font-bold text-white mb-4">
-          Welcome to Product Visor
+          Добро пожаловать в Product Visor
         </h1>
         <p className="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
-          Your comprehensive solution for contact lens inventory management. 
-          Track, search, and manage your products with ease and precision.
+          Ваше комплексное решение для управления инвентарем контактных линз. 
+          Отслеживайте, ищите и управляйте продуктами с легкостью и точностью.
         </p>
         <div className="flex justify-center space-x-4">
           <Link
             to="/add-product"
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-md transition-colors font-medium"
           >
-            Add First Product
+            Добавить первый продукт
           </Link>
           <Link
             to="/all-products"
             className="border border-gray-600 text-gray-300 hover:bg-gray-700 px-6 py-3 rounded-md transition-colors font-medium"
           >
-            View Catalog
+            Просмотреть каталог
           </Link>
         </div>
       </div>
@@ -113,32 +113,32 @@ const Home = () => {
       {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard
-          title="Total Products"
+          title="Всего продуктов"
           value={totalProducts || 0}
           icon="📦"
-          description="Products in your inventory"
+          description="Продуктов в вашем инвентаре"
           linkTo="/all-products"
-          linkText="View all products"
+          linkText="Просмотреть все продукты"
         />
         <StatCard
-          title="Categories"
+          title="Категории"
           value={totalCategories || 0}
           icon="🏷️"
-          description="Product categories available"
+          description="Доступных категорий продуктов"
         />
         <StatCard
-          title="Quick Actions"
+          title="Быстрые действия"
           value="🚀"
           icon="⚡"
-          description="Start managing your inventory"
+          description="Начать управление инвентарем"
           linkTo="/add-product"
-          linkText="Add new product"
+          linkText="Добавить новый продукт"
         />
       </div>
 
       {/* Features */}
       <div>
-        <h2 className="text-2xl font-bold text-white mb-6 text-center">Key Features</h2>
+        <h2 className="text-2xl font-bold text-white mb-6 text-center">Ключевые возможности</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {features.map((feature, index) => (
             <FeatureCard
@@ -153,27 +153,27 @@ const Home = () => {
 
       {/* Getting Started */}
       <div className="bg-gray-800 rounded-lg p-8">
-        <h2 className="text-2xl font-bold text-white mb-4">Getting Started</h2>
+        <h2 className="text-2xl font-bold text-white mb-4">Начало работы</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="text-center">
             <div className="text-3xl mb-2">1️⃣</div>
-            <h3 className="font-semibold text-white mb-2">Add Products</h3>
+            <h3 className="font-semibold text-white mb-2">Добавьте продукты</h3>
             <p className="text-gray-400 text-sm">
-              Start by adding your contact lens products with detailed attributes.
+              Начните с добавления ваших контактных линз с подробными атрибутами.
             </p>
           </div>
           <div className="text-center">
             <div className="text-3xl mb-2">2️⃣</div>
-            <h3 className="font-semibold text-white mb-2">Organize & Search</h3>
+            <h3 className="font-semibold text-white mb-2">Организуйте и ищите</h3>
             <p className="text-gray-400 text-sm">
-              Use categories and search features to find products quickly.
+              Используйте категории и функции поиска для быстрого поиска продуктов.
             </p>
           </div>
           <div className="text-center">
             <div className="text-3xl mb-2">3️⃣</div>
-            <h3 className="font-semibold text-white mb-2">Manage Inventory</h3>
+            <h3 className="font-semibold text-white mb-2">Управляйте инвентарем</h3>
             <p className="text-gray-400 text-sm">
-              Track expiry dates, stock levels, and product specifications.
+              Отслеживайте сроки годности, уровни запасов и спецификации продуктов.
             </p>
           </div>
         </div>

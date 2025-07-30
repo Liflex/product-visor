@@ -215,13 +215,23 @@ const useBarcodeScanner = ({
     }
   }, [enabled]);
 
+  const resetBarcode = () => {
+    setScannedBarcode('');
+    barcodeBuffer = '';
+    keyPressTimes = [];
+    if (barcodeTimeout) {
+      clearTimeout(barcodeTimeout);
+    }
+  };
+
   return {
     isScanning,
     isSearching,
     scannedBarcode,
     notification,
     hideNotification,
-    searchProductByBarcode
+    searchProductByBarcode,
+    resetBarcode
   };
 };
 

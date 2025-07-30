@@ -71,7 +71,7 @@ const ErrorMessage = ({
                 onClick={onRetry}
                 className="text-sm font-medium underline hover:no-underline focus:outline-none"
               >
-                Retry
+                Повторить
               </button>
             )}
             {onDismiss && (

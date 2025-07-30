@@ -29,7 +29,7 @@ const ProductCardWrapper = ({ product, onDelete, customActions = [] }) => {
    * Handle product deletion with confirmation
    */
   const handleDelete = async () => {
-    if (!window.confirm(`Are you sure you want to delete "${product.name}"?`)) {
+    if (!window.confirm(`Вы уверены, что хотите удалить "${product.name}"?`)) {
       return;
     }
 
@@ -96,23 +96,23 @@ const ProductAll = () => {
    */
   const customActions = [
     {
-      label: '👁️ View',
+      label: '👁️ Просмотр',
       onClick: (product) => {
         // Navigate to product detail page
         window.open(`/product/${product.id}`, '_blank');
       },
       className: 'text-blue-400 hover:text-blue-300',
-      title: 'View product details'
+      title: 'Просмотр деталей продукта'
     },
     {
-      label: '📋 Copy ID',
+      label: '📋 Копировать ID',
       onClick: (product) => {
         navigator.clipboard.writeText(product.id.toString());
         // You could show a notification here
         console.log('Product ID copied:', product.id);
       },
       className: 'text-green-400 hover:text-green-300',
-      title: 'Copy product ID to clipboard'
+      title: 'Копировать ID продукта в буфер обмена'
     }
   ];
 
@@ -121,16 +121,16 @@ const ProductAll = () => {
       {/* Page Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-3xl font-bold text-white">Product Catalog</h2>
+          <h2 className="text-3xl font-bold text-white">Каталог продуктов</h2>
           <p className="text-gray-400 mt-1">
-            {isLoading ? 'Loading...' : `${filteredCount} of ${totalProducts} products`}
+            {isLoading ? 'Загрузка...' : `${filteredCount} из ${totalProducts} продуктов`}
           </p>
         </div>
         <Link
           to="/add-product"
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md transition-colors"
         >
-          Add Product
+          Добавить продукт
         </Link>
       </div>
 
@@ -156,7 +156,7 @@ const ProductAll = () => {
 
       {/* Loading State */}
       {isLoading && !error && (
-        <LoadingSpinner message="Loading products..." />
+        <LoadingSpinner message="Загрузка продуктов..." />
       )}
 
       {/* Products Grid */}
@@ -177,8 +177,8 @@ const ProductAll = () => {
             <div className="text-center py-12">
               <div className="text-gray-400 text-lg mb-4">
                 {searchQuery || Object.keys(filters).length > 0 
-                  ? 'No products found matching your criteria'
-                  : 'No products available'
+                  ? 'Продукты по вашим критериям не найдены'
+                  : 'Продукты недоступны'
                 }
               </div>
               {searchQuery || Object.keys(filters).length > 0 ? (
@@ -186,14 +186,14 @@ const ProductAll = () => {
                   onClick={clearSearchAndFilters}
                   className="text-indigo-400 hover:text-indigo-300 transition-colors"
                 >
-                  Clear filters to see all products
+                  Очистить фильтры, чтобы увидеть все продукты
                 </button>
               ) : (
                 <Link
                   to="/add-product"
                   className="text-indigo-400 hover:text-indigo-300 transition-colors"
                 >
-                  Add your first product
+                  Добавить первый продукт
                 </Link>
               )}
             </div>

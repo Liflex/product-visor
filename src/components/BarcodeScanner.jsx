@@ -134,7 +134,7 @@ const BarcodeScanner = ({ onScan, onClose, isOpen }) => {
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
       <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-semibold text-white">Scan Barcode</h3>
+          <h3 className="text-xl font-semibold text-white">Сканировать штрих-код</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors"
@@ -150,7 +150,7 @@ const BarcodeScanner = ({ onScan, onClose, isOpen }) => {
           <div className="flex items-center space-x-2">
             <div className={`w-3 h-3 rounded-full ${isListening ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
             <p className="text-blue-300 text-sm">
-              {isListening ? 'Scanner ready - Point scanner at barcode' : 'Scanner not ready'}
+              {isListening ? 'Сканер готов - Наведите сканер на штрих-код' : 'Сканер не готов'}
             </p>
           </div>
         </div>
@@ -169,7 +169,7 @@ const BarcodeScanner = ({ onScan, onClose, isOpen }) => {
         {/* Manual Input */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Scanned barcode or manual input:
+            Отсканированный штрих-код или ручной ввод:
           </label>
           <div className="flex space-x-2">
             <input
@@ -177,7 +177,7 @@ const BarcodeScanner = ({ onScan, onClose, isOpen }) => {
               value={scannedCode}
               onChange={handleManualInput}
               onKeyDown={handleKeyDown}
-              placeholder="Barcode will appear here when scanned..."
+              placeholder="Штрих-код появится здесь при сканировании..."
               className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <button
@@ -185,7 +185,7 @@ const BarcodeScanner = ({ onScan, onClose, isOpen }) => {
               disabled={!scannedCode.trim()}
               className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              Add
+              Добавить
             </button>
           </div>
         </div>
