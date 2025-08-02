@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
@@ -31,9 +32,30 @@ public class ProductService {
     private final ProductMarketService productMarketService;
     private final ProductMapper productMapper;
 
+    /**
+     * Генерирует уникальный 12-значный артикул
+     */
+    private String generateArticle() {
+        Random random = new Random();
+        String article;
+        do {
+            // Генерируем 12-значное число
+            long number = 100000000000L + random.nextLong(900000000000L);
+            article = String.valueOf(number);
+        } while (productRepository.findByArticle(article).isPresent());
+        
+        logger.debug("Generated unique article: {}", article);
+        return article;
+    }
+
     public Product save(Product entity) {
         if (entity.getId() == null) {
             logger.info("💾 Saving new product: name={}", entity.getName());
+            // Генерируем артикул для нового товара
+            if (entity.getArticle() == null || entity.getArticle().trim().isEmpty()) {
+                entity.setArticle(generateArticle());
+                logger.info("Generated article for new product: {}", entity.getArticle());
+            }
         } else {
             logger.info("💾 Updating product: id={}, name={}", entity.getId(), entity.getName());
         }

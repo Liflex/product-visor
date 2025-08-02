@@ -12,6 +12,43 @@ import EditProductNew from './components/EditProductNew';
 import ProductDetail from './components/ProductDetail';
 import MarketList from './components/MarketList';
 import ErrorMessage from './components/ui/error-message.jsx';
+import { API_URLS } from './config/api-config.js';
+
+/**
+ * AddProductPage component with categories loading
+ */
+const AddProductPage = () => {
+  const [categories, setCategories] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const location = useLocation();
+
+  React.useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch(API_URLS.CATEGORIES.BASE);
+        const data = await response.json();
+        setCategories(data);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-500"></div>
+      </div>
+    );
+  }
+
+  // Pass location state to ProductFormNew
+  return <ProductFormNew categories={categories} locationState={location.state} />;
+};
 
 /**
  * Navigation component
@@ -146,7 +183,7 @@ const App = () => {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/all-products" element={<ProductAll />} />
-            <Route path="/add-product" element={<ProductFormNew />} />
+            <Route path="/add-product" element={<AddProductPage />} />
             <Route path="/edit-product/:productId" element={<EditProductNew />} />
             <Route path="/product/:productId" element={<ProductDetail />} />
             <Route path="/markets" element={<MarketList />} />

@@ -7,8 +7,8 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-07-12T22:47:33+0300",
-    comments = "version: 1.6.2, compiler: javac, environment: Java 17.0.14 (Azul Systems, Inc.)"
+    date = "2025-08-02T16:34:33+0300",
+    comments = "version: 1.6.2, compiler: Eclipse JDT (IDE) 3.42.50.v20250628-1110, environment: Java 21.0.7 (Azul Systems, Inc.)"
 )
 @Component
 public class AttributeMapperImpl implements AttributeMapper {
@@ -22,11 +22,11 @@ public class AttributeMapperImpl implements AttributeMapper {
         AttributeDto attributeDto = new AttributeDto();
 
         attributeDto.setId( attribute.getId() );
+        attributeDto.setMultiple( attribute.isMultiple() );
         attributeDto.setName( attribute.getName() );
         attributeDto.setNameRus( attribute.getNameRus() );
-        attributeDto.setType( attribute.getType() );
         attributeDto.setRequired( attribute.isRequired() );
-        attributeDto.setMultiple( attribute.isMultiple() );
+        attributeDto.setType( attribute.getType() );
 
         return attributeDto;
     }
@@ -40,11 +40,11 @@ public class AttributeMapperImpl implements AttributeMapper {
         Attribute attribute = new Attribute();
 
         attribute.setId( attributeDto.getId() );
+        attribute.setMultiple( attributeDto.isMultiple() );
         attribute.setName( attributeDto.getName() );
         attribute.setNameRus( attributeDto.getNameRus() );
-        attribute.setType( attributeDto.getType() );
         attribute.setRequired( attributeDto.isRequired() );
-        attribute.setMultiple( attributeDto.isMultiple() );
+        attribute.setType( attributeDto.getType() );
 
         return attribute;
     }

@@ -3,761 +3,639 @@
  * Provides form for creating new products with validation and dynamic attributes
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useProducts } from '../hooks/use-products.js';
-import { useCategories } from '../hooks/use-categories.js';
-import { useProductFormValidation } from '../hooks/use-form-validation.js';
-import InputField from './ui/input-field.jsx';
-import SelectField from './ui/select-field.jsx';
-import LoadingSpinner from './ui/loading-spinner.jsx';
-import ErrorMessage from './ui/error-message.jsx';
-import BarcodeScanner from './BarcodeScanner.jsx';
-import MarketSelector from './MarketSelector.jsx';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import BarcodeScanner from './BarcodeScanner';
+import { createProduct } from '../services/productService';
+import { getCategories } from '../services/categoryService';
+import { API_URLS } from '../config/api-config.js';
+import axios from 'axios'; // Added axios import
 
-/**
- * Dynamic attribute field component
- * @param {Object} props - Component props
- * @param {Object} props.attribute - Attribute definition
- * @param {*} props.value - Current value
- * @param {Function} props.onChange - Change handler
- * @param {Function} props.onBlur - Blur handler
- * @param {string} props.error - Error message
- * @param {boolean} props.hasError - Whether field has error
- * @returns {JSX.Element} Attribute field component
- */
-const AttributeField = ({ attribute, value, onChange, onBlur, error, hasError }) => {
-  const { name, nameRus, type, required, multiple } = attribute;
-  const [showScanner, setShowScanner] = useState(false);
-
-  /**
-   * Handle barcode scan
-   */
-  const handleBarcodeScan = (scannedCode) => {
-    onChange(scannedCode);
-    setShowScanner(false);
-  };
-
-  /**
-   * Handle multiple value change
-   */
-  const handleMultipleValueChange = (index, newValue) => {
-    const newValues = Array.isArray(value) ? [...value] : [''];
-    newValues[index] = newValue;
-    onChange(newValues);
-  };
-
-  /**
-   * Add new field for multiple values
-   */
-  const addField = () => {
-    const newValues = Array.isArray(value) ? [...value, ''] : [''];
-    onChange(newValues);
-  };
-
-  /**
-   * Remove field for multiple values
-   */
-  const removeField = (index) => {
-    if (Array.isArray(value) && value.length > 1) {
-      const newValues = value.filter((_, i) => i !== index);
-      onChange(newValues);
-    }
-  };
-
-  // Render multiple fields
-  if (multiple) {
-    const values = Array.isArray(value) ? value : [''];
+const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, locationState = null }) => {
+    const [selectedCategory, setSelectedCategory] = useState(null);
+    const [productAttributes, setProductAttributes] = useState({});
+    const [productName, setProductName] = useState('');
+    const [productPrice, setProductPrice] = useState('');
+    const [productArticle, setProductArticle] = useState('');
+    const [productBarcode, setProductBarcode] = useState('');
+    const [productQuantity, setProductQuantity] = useState(0);
+    const [dynamicFields, setDynamicFields] = useState({});
+    const [imageFile, setImageFile] = useState(null);
+    const [previewUrl, setPreviewUrl] = useState(null);
+    const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
     
-    return (
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-300 mb-2">
-          {nameRus}
-          {required && <span className="text-red-500 ml-1">*</span>}
-        </label>
-        
-        {values.map((val, index) => (
-          <div key={index} className="flex items-center mb-2">
-            <div className="flex-1">
-              <InputField
-                type={type === 'date' ? 'date' : type === 'double' || type === 'integer' ? 'number' : 'text'}
-                value={val}
-                onChange={(e) => handleMultipleValueChange(index, e.target.value)}
-                onBlur={onBlur}
-                placeholder={`${nameRus} ${index + 1}`}
-                inputProps={{
-                  step: type === 'double' ? '0.01' : type === 'integer' ? '1' : undefined
-                }}
-                hasError={hasError && index === 0} // Show error only on first field
-                error={hasError && index === 0 ? error : ''}
-              />
-            </div>
-            
-            <div className="ml-2 flex space-x-1">
-              {values.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeField(index)}
-                  className="bg-red-600 hover:bg-red-700 text-white w-8 h-8 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
-                  title="Удалить поле"
-                >
-                  −
-                </button>
-              )}
-              
-              {index === values.length - 1 && (
-                <button
-                  type="button"
-                  onClick={addField}
-                  className="bg-green-600 hover:bg-green-700 text-white w-8 h-8 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
-                  title="Добавить поле"
-                >
-                  +
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
+    // Поля упаковки
+    const [packageWidth, setPackageWidth] = useState('');
+    const [packageHeight, setPackageHeight] = useState('');
+    const [packageLength, setPackageLength] = useState('');
+    const [packageWeight, setPackageWeight] = useState('');
+    const [packageQuantity, setPackageQuantity] = useState('');
 
-  // Render single field
-  if (name.toLowerCase() === 'barcode') {
-    return (
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-300 mb-2">
-          {nameRus}
-          {required && <span className="text-red-500 ml-1">*</span>}
-        </label>
-        
-        <div className="flex space-x-2">
-          <div className="flex-1">
-            <InputField
-              type="text"
-              value={value || ''}
-              onChange={(e) => onChange(e.target.value)}
-              onBlur={onBlur}
-              placeholder="Введите штрих-код или отсканируйте..."
-              error={error}
-              hasError={hasError}
-            />
-          </div>
-          
-          <button
-            type="button"
-            onClick={() => setShowScanner(true)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center space-x-2"
-            title="Сканировать штрих-код"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V6a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1zm12 0h2a1 1 0 001-1V6a1 1 0 00-1-1h-2a1 1 0 00-1 1v1a1 1 0 001 1zM5 20h2a1 1 0 001-1v-1a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1z" />
-            </svg>
-            <span>Сканировать</span>
-          </button>
-        </div>
-        
-        {/* Barcode Scanner Modal */}
-        <BarcodeScanner
-          isOpen={showScanner}
-          onScan={handleBarcodeScan}
-          onClose={() => setShowScanner(false)}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <InputField
-      label={nameRus}
-      type={type === 'date' ? 'date' : type === 'double' || type === 'integer' ? 'number' : 'text'}
-      value={value || ''}
-      onChange={(e) => onChange(e.target.value)}
-      onBlur={onBlur}
-      required={required}
-      error={error}
-      hasError={hasError}
-      inputProps={{
-        step: type === 'double' ? '0.01' : type === 'integer' ? '1' : undefined
-      }}
-    />
-  );
-};
-
-/**
- * Image upload component
- * @param {Object} props - Component props
- * @param {File} props.file - Selected file
- * @param {Function} props.onChange - Change handler
- * @param {string} props.previewUrl - Preview URL
- * @param {string} props.error - Error message
- * @param {boolean} props.hasError - Whether field has error
- * @returns {JSX.Element} Image upload component
- */
-const ImageUpload = ({ file, onChange, previewUrl, error, hasError }) => {
-  /**
-   * Handle file selection
-   */
-  const handleFileChange = (event) => {
-    const selectedFile = event.target.files[0];
-    onChange(selectedFile);
-  };
-
-  return (
-    <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-300 mb-2">
-        Изображение продукта <span className="text-red-500">*</span>
-      </label>
-      
-      <div className="space-y-4">
-        {/* File Input */}
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          className={`block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 file:cursor-pointer cursor-pointer ${
-            hasError ? 'border-red-500' : 'border-gray-700'
-          }`}
-        />
-        
-        {/* Error Message */}
-        {hasError && error && (
-          <p className="text-sm text-red-500">{error}</p>
-        )}
-        
-        {/* Preview */}
-        {previewUrl && (
-          <div className="mt-4">
-            <p className="text-sm text-gray-300 mb-2">Предварительный просмотр:</p>
-            <img
-              src={previewUrl}
-              alt="Preview"
-              className="w-32 h-32 object-cover rounded-md border border-gray-600"
-            />
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-/**
- * Main ProductForm component
- */
-const ProductFormNew = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { addProduct } = useProducts();
-  const { categories, isLoading: categoriesLoading } = useCategories();
-  
-  // Form state
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [dynamicFields, setDynamicFields] = useState({});
-  const [imageFile, setImageFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const [barcode, setBarcode] = useState(location.state?.barcode || '');
-  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
-  const [isListeningForBarcode, setIsListeningForBarcode] = useState(true);
-  const barcodeInputRef = useRef(null);
-  const [selectedMarkets, setSelectedMarkets] = useState([]);
-  const [quantity, setQuantity] = useState(0);
-
-  // Show notification if barcode was pre-filled
-  useEffect(() => {
-    if (location.state?.barcode) {
-      console.log('📝 Barcode pre-filled from navigation:', location.state.barcode);
-    }
-  }, [location.state?.barcode]);
-  
-  // Form validation
-  const {
-    values,
-    errors,
-    touched,
-    isSubmitting,
-    handleFieldChange,
-    handleFieldBlur,
-    handleSubmit,
-    updateValue,
-    markFieldTouched
-  } = useProductFormValidation({
-    name: '',
-    category: null,
-    dynamicFields: {},
-    imageFile: null
-  });
-
-  /**
-   * Initialize dynamic fields when category changes
-   */
-  useEffect(() => {
-    if (selectedCategory) {
-      const initialFields = {};
-      selectedCategory.attributes.forEach(attr => {
-        if (attr.multiple) {
-          initialFields[attr.name] = [''];
-        } else {
-          initialFields[attr.name] = '';
-        }
-      });
-      setDynamicFields(initialFields);
-      updateValue('dynamicFields', initialFields);
-    }
-  }, [selectedCategory, updateValue]);
-
-  /**
-   * Update form values when state changes
-   */
-  useEffect(() => {
-    updateValue('category', selectedCategory);
-    updateValue('dynamicFields', dynamicFields);
-    updateValue('imageFile', imageFile);
-  }, [selectedCategory, dynamicFields, imageFile, updateValue]);
-
-  /**
-   * Handle category selection
-   */
-  const handleCategoryChange = (event) => {
-    const categoryId = parseInt(event.target.value, 10);
-    const category = categories.find(cat => cat.id === categoryId) || null;
-    setSelectedCategory(category);
-  };
-
-  /**
-   * Handle dynamic field change
-   */
-  const handleDynamicFieldChange = (fieldName, value) => {
-    const newFields = {
-      ...dynamicFields,
-      [fieldName]: value
+    // Функция для генерации уникального 12-значного артикула
+    const generateArticle = () => {
+        const timestamp = Date.now().toString();
+        const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+        const article = (timestamp + random).slice(-12);
+        return article;
     };
-    setDynamicFields(newFields);
-  };
 
-  /**
-   * Handle image file change
-   */
-  const handleImageChange = (file) => {
-    setImageFile(file);
-    
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-    } else {
-      setPreviewUrl(null);
-    }
-  };
-
-  /**
-   * Handle barcode scan
-   */
-  const handleBarcodeScan = (scannedCode) => {
-    setBarcode(scannedCode);
-    setShowBarcodeScanner(false);
-  };
-
-  /**
-   * Global barcode scanner listener with detailed logging
-   */
-  useEffect(() => {
-    let barcodeBuffer = '';
-    let barcodeTimeout = null;
-    let keyPressTimes = [];
-    let lastKeyTime = 0;
-
-    const handleGlobalKeyDown = (event) => {
-      // Only listen if auto-scan is enabled
-      if (!isListeningForBarcode) {
-        return;
-      }
-      
-      // For input fields, we need to handle differently
-      if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
-        // Only process if it's the barcode field and we're listening for scanner
-        if (event.target === barcodeInputRef.current) {
-          console.log('🔍 Barcode field focused - allowing scanner input');
-          // Continue processing for barcode field
-        } else {
-          console.log('🔍 Other input field - ignoring scanner input');
-          return;
-        }
-      }
-
-      const currentTime = Date.now();
-      const timeSinceLastKey = currentTime - lastKeyTime;
-      lastKeyTime = currentTime;
-
-      // Log only important events (scanner detection)
-      if (event.key.length === 1 && event.key.charCodeAt(0) >= 32) {
-        console.log('🔍 Scanner input detected:', {
-          key: event.key,
-          timeSinceLastKey: timeSinceLastKey + 'ms',
-          target: event.target.tagName,
-          isBarcodeField: event.target === barcodeInputRef.current
-        });
-      }
-
-      // Check if it's a printable character (barcode scanner input)
-      // Barcode can contain any printable characters: digits, letters, symbols, etc.
-      if (event.key.length === 1 && event.key.charCodeAt(0) >= 32) {
-        barcodeBuffer += event.key;
-        keyPressTimes.push(currentTime);
-        
-        // Only log buffer updates for debugging (can be removed later)
-        if (barcodeBuffer.length <= 3) {
-          console.log('📝 Buffer:', barcodeBuffer);
-        }
-        
-        // Clear previous timeout
-        if (barcodeTimeout) {
-          clearTimeout(barcodeTimeout);
-        }
-        
-        // Set timeout to process barcode after scanner finishes
-        barcodeTimeout = setTimeout(() => {
-          if (barcodeBuffer.length > 0) {
-            // Calculate timing statistics
-            const intervals = [];
-            for (let i = 1; i < keyPressTimes.length; i++) {
-              intervals.push(keyPressTimes[i] - keyPressTimes[i-1]);
+    // Инициализация формы при копировании товара или переходе с главной страницы
+    useEffect(() => {
+        if (initialProduct) {
+            setProductName(initialProduct.name || '');
+            setProductPrice(initialProduct.price || '');
+            setProductBarcode(initialProduct.barcode || '');
+            setProductQuantity(initialProduct.quantity || 0);
+            
+            // Копируем данные об упаковке
+            if (initialProduct.packageInfo) {
+                setPackageWidth(initialProduct.packageInfo.width || '');
+                setPackageHeight(initialProduct.packageInfo.height || '');
+                setPackageLength(initialProduct.packageInfo.length || '');
+                setPackageWeight(initialProduct.packageInfo.weight || '');
+                setPackageQuantity(initialProduct.packageInfo.quantityInPackage || '');
             }
             
-            const avgInterval = intervals.length > 0 ? intervals.reduce((a, b) => a + b, 0) / intervals.length : 0;
-            const minInterval = intervals.length > 0 ? Math.min(...intervals) : 0;
-            const maxInterval = intervals.length > 0 ? Math.max(...intervals) : 0;
+            // Устанавливаем категорию
+            if (initialProduct.category) {
+                const category = categories.find(cat => cat.id === initialProduct.category.id);
+                if (category) {
+                    setSelectedCategory(category);
+                    console.log('✅ Category set for copying:', category.name);
+                }
+            }
+        } else if (locationState && locationState.barcode) {
+            // Заполняем штрих-код при переходе с главной страницы
+            setProductBarcode(locationState.barcode);
+            console.log('📝 Pre-filled barcode from navigation:', locationState.barcode);
+        }
+    }, [initialProduct, categories, locationState]);
+
+    // useEffect для установки категории при копировании
+    useEffect(() => {
+        if (initialProduct && initialProduct.category) {
+            setSelectedCategory(initialProduct.category);
+            console.log('✅ Category set for copying:', initialProduct.category.name);
+        }
+    }, [initialProduct]);
+
+    // useEffect для инициализации атрибутов категории
+    useEffect(() => {
+        if (selectedCategory) {
+            const initialAttributes = {};
+            selectedCategory.attributes.forEach(attr => {
+                if (attr.multiple) {
+                    initialAttributes[attr.name] = [''];
+                } else {
+                    initialAttributes[attr.name] = '';
+                }
+            });
+            setProductAttributes(initialAttributes);
             
-            console.log('🎯 Barcode Analysis:', {
-              barcode: barcodeBuffer,
-              length: barcodeBuffer.length,
-              avgInterval: avgInterval + 'ms',
-              isLikelyScanner: avgInterval < 50 && barcodeBuffer.length > 5
+            // Если это копирование товара, не перезаписываем dynamicFields
+            if (!initialProduct) {
+                setDynamicFields(initialAttributes);
+                console.log('🔄 Initialized category attributes:', initialAttributes);
+            }
+        }
+    }, [selectedCategory, initialProduct]);
+
+    // Отдельный useEffect для копирования атрибутов после установки категории
+    useEffect(() => {
+        if (initialProduct && selectedCategory && initialProduct.productAttributeValues) {
+            console.log('🔄 Copying attributes for category:', selectedCategory.name);
+            
+            const attributeFields = {};
+            
+            // Сначала инициализируем поля для всех атрибутов категории
+            selectedCategory.attributes.forEach(attr => {
+                if (attr.multiple) {
+                    attributeFields[attr.name] = [];
+                } else {
+                    attributeFields[attr.name] = '';
+                }
             });
             
-            // Only process if it looks like a scanner (fast typing + reasonable length)
-            // Scanner typically types very fast (< 50ms between characters)
-            // Human typing is typically 150-300ms between characters
-            // Barcode can contain any characters: digits, letters, symbols, etc.
-            const isLikelyScanner = avgInterval < 50 && barcodeBuffer.length > 5;
+            // Теперь заполняем значениями из копируемого товара
+            initialProduct.productAttributeValues.forEach(attrValue => {
+                const attrName = attrValue.attribute.name;
+                const categoryAttr = selectedCategory.attributes.find(attr => attr.name === attrName);
+                
+                if (categoryAttr) {
+                    if (categoryAttr.multiple) {
+                        // Для множественных атрибутов добавляем в массив
+                        if (!attributeFields[attrName]) {
+                            attributeFields[attrName] = [];
+                        }
+                        attributeFields[attrName].push(attrValue.value);
+                    } else {
+                        // Для одиночных атрибутов устанавливаем значение
+                        attributeFields[attrName] = attrValue.value;
+                    }
+                }
+            });
             
-            if (isLikelyScanner) {
-              console.log('✅ Scanner detected - Auto-filling barcode:', barcodeBuffer);
-              
-              // Auto-fill the barcode field and focus on it
-              if (barcodeInputRef.current) {
-                setBarcode(barcodeBuffer);
-                barcodeInputRef.current.focus();
-                console.log('🎯 Focused on barcode field');
-              }
-            } else {
-              console.log('❌ Likely manual input - Ignoring:', barcodeBuffer);
-            }
-            
-            // Reset buffer
-            barcodeBuffer = '';
-            keyPressTimes = [];
-          }
-        }, 150); // Slightly longer delay to capture full barcode
-      }
-      
-      // Handle Enter key (common for barcode scanners)
-      if (event.key === 'Enter' && barcodeBuffer.length > 0) {
+            console.log('📋 Copied attribute fields:', attributeFields);
+            setDynamicFields(attributeFields);
+        }
+    }, [initialProduct, selectedCategory]);
+
+    const handleCategoryChange = (event) => {
+        const categoryId = parseInt(event.target.value, 10);
+        const category = categories.find(cat => cat.id === categoryId);
+        setSelectedCategory(category);
+    };
+
+    const handleAttributeChange = (event, fieldName) => {
+        const { value } = event.target;
+        setDynamicFields({
+            ...dynamicFields,
+            [fieldName]: value
+        });
+    };
+
+    const handleDynamicFieldChange = (event, fieldName, index) => {
+        const { value } = event.target;
+        const updatedFields = { ...dynamicFields };
+        if (Array.isArray(updatedFields[fieldName])) {
+            updatedFields[fieldName][index] = value;
+        } else {
+            updatedFields[fieldName] = value;
+        }
+        setDynamicFields(updatedFields);
+    };
+
+    const handleAddField = (fieldName) => {
+        const updatedFields = { ...dynamicFields };
+        if (Array.isArray(updatedFields[fieldName])) {
+            updatedFields[fieldName].push('');
+        }
+        setDynamicFields(updatedFields);
+    };
+
+    const handleRemoveField = (fieldName, index) => {
+        const updatedFields = { ...dynamicFields };
+        if (Array.isArray(updatedFields[fieldName])) {
+            updatedFields[fieldName].splice(index, 1);
+        }
+        setDynamicFields(updatedFields);
+    };
+
+    const handleImageChange = (event) => {
+        const file = event.target.files[0];
+        setImageFile(file);
+        if (file) {
+            setPreviewUrl(URL.createObjectURL(file));
+        } else {
+            setPreviewUrl(null);
+        }
+    };
+
+    const handleBarcodeScan = (scannedCode) => {
+        setProductBarcode(scannedCode);
+        setShowBarcodeScanner(false);
+    };
+
+    const handleSubmit = async (event) => {
         event.preventDefault();
         
-        console.log('⏎ Enter pressed with buffer:', barcodeBuffer);
+        // Собираем данные о товаре
+        const productData = {
+            name: productName,
+            price: parseFloat(productPrice),
+            barcode: productBarcode,
+            quantity: parseInt(productQuantity),
+            category: {
+                id: selectedCategory.id
+            },
+            packageInfo: {
+                width: packageWidth ? parseFloat(packageWidth) : null,
+                height: packageHeight ? parseFloat(packageHeight) : null,
+                length: packageLength ? parseFloat(packageLength) : null,
+                weight: packageWeight ? parseFloat(packageWeight) : null,
+                quantityInPackage: packageQuantity ? parseInt(packageQuantity) : null
+            },
+            productAttributeValues: Object.entries(dynamicFields).map(([key, value]) => {
+                const attribute = selectedCategory.attributes.find(attr => attr.name === key);
+                if (Array.isArray(value)) {
+                    return value.map(val => ({
+                        attribute: {
+                            id: attribute.id,
+                            name: attribute.name,
+                            nameRus: attribute.nameRus,
+                            type: attribute.type,
+                            required: attribute.required,
+                            multiple: attribute.multiple
+                        },
+                        value: val
+                    }));
+                } else {
+                    return {
+                        attribute: {
+                            id: attribute.id,
+                            name: attribute.name,
+                            nameRus: attribute.nameRus,
+                            type: attribute.type,
+                            required: attribute.required,
+                            multiple: attribute.multiple
+                        },
+                        value: value
+                    };
+                }
+            }).flat()
+        };
+
+        // Преобразуем данные в JSON строку
+        const formData = new FormData();
+        formData.append('productData', JSON.stringify(productData));
+        if (imageFile) {
+            formData.append('image', imageFile);
+        }
         
-        if (barcodeBuffer.length > 0) {
-          // Calculate timing for Enter case
-          const intervals = [];
-          for (let i = 1; i < keyPressTimes.length; i++) {
-            intervals.push(keyPressTimes[i] - keyPressTimes[i-1]);
-          }
-          
-          const avgInterval = intervals.length > 0 ? intervals.reduce((a, b) => a + b, 0) / intervals.length : 0;
-          const isLikelyScanner = avgInterval < 50 && barcodeBuffer.length > 5;
-          
-          if (isLikelyScanner) {
-            console.log('✅ Scanner detected (Enter) - Auto-filling barcode:', barcodeBuffer);
+        try {
+            const response = await axios.post(API_URLS.PRODUCTS.BASE, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            console.log('Product created successfully:', response.data);
+            alert('Товар успешно добавлен!');
+
+            // Сбрасываем форму
+            setProductName('');
+            setProductPrice('');
+            setProductBarcode('');
+            setProductQuantity(0);
+            setPackageWidth('');
+            setPackageHeight('');
+            setPackageLength('');
+            setPackageWeight('');
+            setPackageQuantity('');
+            setImageFile(null);
+            setPreviewUrl(null);
+            setSelectedCategory(null);
+            setDynamicFields({});
             
-            // Auto-fill the barcode field and focus on it
-            if (barcodeInputRef.current) {
-              setBarcode(barcodeBuffer);
-              barcodeInputRef.current.focus();
-              console.log('🎯 Focused on barcode field (Enter)');
+            if (onProductCreated) {
+                onProductCreated(response.data);
             }
-          } else {
-            console.log('❌ Likely manual input (Enter) - Ignoring:', barcodeBuffer);
-          }
-          
-          // Reset buffer
-          barcodeBuffer = '';
-          keyPressTimes = [];
+        } catch (error) {
+            console.error('Error creating product:', error);
+            alert('Ошибка при добавлении товара.');
         }
-      }
     };
 
-    // Add global event listener
-    document.addEventListener('keydown', handleGlobalKeyDown);
-
-    return () => {
-      document.removeEventListener('keydown', handleGlobalKeyDown);
-      if (barcodeTimeout) {
-        clearTimeout(barcodeTimeout);
-      }
-    };
-  }, [barcode, isListeningForBarcode]);
-
-  /**
-   * Handle form submission
-   */
-  const handleFormSubmit = async (formData) => {
-    const productData = {
-      name: formData.name,
-      barcode: barcode.trim() || null,
-      quantity: quantity, // Используем quantity из MarketSelector
-      category: {
-        id: selectedCategory.id
-      },
-      productAttributeValues: Object.entries(dynamicFields).map(([key, value]) => {
-        const attribute = selectedCategory.attributes.find(attr => attr.name === key);
-        
-        if (Array.isArray(value)) {
-          return value.filter(v => v.trim()).map(val => ({
-            attribute: {
-              id: attribute.id,
-              name: attribute.name,
-              nameRus: attribute.nameRus,
-              type: attribute.type,
-              required: attribute.required,
-              multiple: attribute.multiple
-            },
-            value: val
-          }));
-        } else {
-          return {
-            attribute: {
-              id: attribute.id,
-              name: attribute.name,
-              nameRus: attribute.nameRus,
-              type: attribute.type,
-              required: attribute.required,
-              multiple: attribute.multiple
-            },
-            value: value
-          };
-        }
-      }).flat().filter(item => item.value && item.value.trim()),
-      // Добавляем данные о маркетах
-      marketIds: selectedMarkets.map(m => m.marketId),
-      marketQuantities: selectedMarkets.map(m => m.quantity),
-      marketPrices: selectedMarkets.map(m => m.price)
-    };
-
-    const success = await addProduct(productData, imageFile);
-    if (success) {
-      navigate('/all-products');
-    }
-  };
-
-  // Loading state
-  if (categoriesLoading) {
-    return <LoadingSpinner message="Загрузка категорий..." />;
-  }
-
-  // Convert categories to options
-  const categoryOptions = categories.map(category => ({
-    value: category.id,
-    label: category.name
-  }));
-
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <h2 className="text-3xl font-bold text-white">Добавить новый продукт</h2>
-          <p className="text-gray-400 mt-1">Создайте новый продукт с динамическими атрибутами</p>
-        </div>
-
-        {/* Form */}
-        <div className="bg-gray-800 rounded-lg shadow-lg p-6">
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            handleSubmit(handleFormSubmit);
-          }}>
-            {/* Product Name */}
-            <InputField
-              label="Название продукта"
-              type="text"
-              placeholder="Введите название продукта..."
-              required
-              {...values.name && handleFieldChange('name')}
-              value={values.name}
-              onChange={handleFieldChange('name')}
-              onBlur={handleFieldBlur('name')}
-              error={touched.name ? errors.name : ''}
-              hasError={touched.name && !!errors.name}
-            />
-
-            {/* Barcode Field */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Штрих-код (Необязательно)
-              </label>
-              
-              <div className="flex space-x-2">
-                              <div className="flex-1">
-                <InputField
-                  ref={barcodeInputRef}
-                  type="text"
-                  value={barcode}
-                  onChange={(e) => setBarcode(e.target.value)}
-                  placeholder={location.state?.barcode ? `Штрих-код: ${location.state.barcode}` : "Наведите сканер в любое место и нажмите курок (поддерживаются любые символы)..."}
-                  inputProps={{
-                    id: 'barcode-input-field',
-                    name: 'barcode'
-                  }}
-                  onKeyDown={(e) => {
-                    // Auto-submit on Enter key (common for barcode scanners)
-                    if (e.key === 'Enter' && barcode.trim()) {
-                      e.preventDefault();
-                      console.log('✅ Barcode Field - Processing barcode:', barcode.trim());
-                      // The barcode is already set, just close scanner if open
-                      if (showBarcodeScanner) {
-                        setShowBarcodeScanner(false);
-                      }
-                    }
-                  }}
-                />
-              </div>
+    return (
+        <div className="container mx-auto px-4 py-8">
+            <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-4xl mx-auto">
+                <h2 className="text-2xl font-bold text-white mb-6">
+                    {initialProduct ? 'Копирование товара' : 'Добавление нового товара'}
+                </h2>
                 
-                <button
-                  type="button"
-                  onClick={() => setShowBarcodeScanner(true)}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center space-x-2"
-                  title="Открыть сканер"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V6a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1zm12 0h2a1 1 0 001-1V6a1 1 0 00-1-1h-2a1 1 0 00-1 1v1a1 1 0 001 1zM5 20h2a1 1 0 001-1v-1a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1z" />
-                  </svg>
-                  <span>Сканировать</span>
-                </button>
-              </div>
-              
-              {/* Scanner Status Indicator */}
-              <div className="mt-2 flex items-center space-x-2">
-                <div className={`w-2 h-2 rounded-full ${isListeningForBarcode ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                <span className="text-xs text-gray-400">
-                  {location.state?.barcode 
-                    ? `Штрих-код предзаполнен: ${location.state.barcode}`
-                    : isListeningForBarcode 
-                      ? 'Автосканирование активно - Наведите сканер в любое место и нажмите курок' 
-                      : 'Автосканирование отключено'
-                  }
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIsListeningForBarcode(!isListeningForBarcode)}
-                  className="text-xs text-indigo-400 hover:text-indigo-300 underline"
-                >
-                  {isListeningForBarcode ? 'Отключить' : 'Включить'}
-                </button>
-              </div>
+                {/* Уведомления */}
+                {/* Уведомления */}
+
+                {/* Показываем уведомление о предзаполненном штрих-коде */}
+                {locationState && locationState.barcode && (
+                    <div className="mb-4 p-3 bg-blue-600 text-white rounded-md">
+                        <p className="text-sm">
+                            📝 Штрих-код предзаполнен: <strong>{locationState.barcode}</strong>
+                        </p>
+                    </div>
+                )}
+                
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* Основная информация о товаре */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label htmlFor="productName" className="block text-sm font-medium text-gray-300">
+                                Название товара <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                id="productName"
+                                value={productName}
+                                onChange={(e) => setProductName(e.target.value)}
+                                className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                required
+                            />
+                        </div>
+                        
+                        <div>
+                            <label htmlFor="productPrice" className="block text-sm font-medium text-gray-300">
+                                Цена <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                id="productPrice"
+                                value={productPrice}
+                                onChange={(e) => setProductPrice(e.target.value)}
+                                className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                required
+                            />
+                        </div>
+                        
+                        <div>
+                            <label htmlFor="productBarcode" className="block text-sm font-medium text-gray-300">
+                                Штрих-код
+                            </label>
+                            <div className="flex space-x-2">
+                                <input
+                                    type="text"
+                                    id="productBarcode"
+                                    value={productBarcode}
+                                    onChange={(e) => setProductBarcode(e.target.value)}
+                                    className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                    placeholder="Введите штрих-код или отсканируйте..."
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowBarcodeScanner(true)}
+                                    className="mt-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center space-x-2"
+                                    title="Сканировать штрих-код"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V6a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1zm12 0h2a1 1 0 001-1V6a1 1 0 00-1-1h-2a1 1 0 00-1 1v1a1 1 0 001 1zM5 20h2a1 1 0 001-1v-1a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1z" />
+                                    </svg>
+                                    <span>Сканировать</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label htmlFor="productQuantity" className="block text-sm font-medium text-gray-300">
+                                Количество на складе
+                            </label>
+                            <input
+                                type="number"
+                                id="productQuantity"
+                                value={productQuantity}
+                                onChange={(e) => setProductQuantity(e.target.value)}
+                                className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Категория */}
+                    <div>
+                        <label htmlFor="category" className="block text-sm font-medium text-gray-300">
+                            Категория <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                            id="category"
+                            value={selectedCategory ? selectedCategory.id : ''}
+                            onChange={handleCategoryChange}
+                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-700 bg-gray-700 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            required
+                        >
+                            <option value="">Выберите категорию</option>
+                            {categories.map(category => (
+                                <option key={category.id} value={category.id}>{category.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Информация об упаковке */}
+                    <div className="border border-gray-600 rounded-lg p-4">
+                        <h3 className="text-lg font-medium text-white mb-4">Информация об упаковке</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div>
+                                <label htmlFor="packageWidth" className="block text-sm font-medium text-gray-300">
+                                    Ширина (см)
+                                </label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    id="packageWidth"
+                                    value={packageWidth}
+                                    onChange={(e) => setPackageWidth(e.target.value)}
+                                    className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                />
+                            </div>
+                            
+                            <div>
+                                <label htmlFor="packageHeight" className="block text-sm font-medium text-gray-300">
+                                    Высота (см)
+                                </label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    id="packageHeight"
+                                    value={packageHeight}
+                                    onChange={(e) => setPackageHeight(e.target.value)}
+                                    className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                />
+                            </div>
+                            
+                            <div>
+                                <label htmlFor="packageLength" className="block text-sm font-medium text-gray-300">
+                                    Длина (см)
+                                </label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    id="packageLength"
+                                    value={packageLength}
+                                    onChange={(e) => setPackageLength(e.target.value)}
+                                    className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                />
+                            </div>
+                            
+                            <div>
+                                <label htmlFor="packageWeight" className="block text-sm font-medium text-gray-300">
+                                    Вес (кг)
+                                </label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    id="packageWeight"
+                                    value={packageWeight}
+                                    onChange={(e) => setPackageWeight(e.target.value)}
+                                    className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                />
+                            </div>
+                            
+                            <div>
+                                <label htmlFor="packageQuantity" className="block text-sm font-medium text-gray-300">
+                                    Количество в упаковке
+                                </label>
+                                <input
+                                    type="number"
+                                    id="packageQuantity"
+                                    value={packageQuantity}
+                                    onChange={(e) => setPackageQuantity(e.target.value)}
+                                    className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Изображение */}
+                    <div>
+                        <label htmlFor="image" className="block text-sm font-medium text-gray-300">
+                            Изображение товара
+                        </label>
+                        <input
+                            type="file"
+                            id="image"
+                            accept="image/*"
+                            onChange={handleImageChange}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        />
+                        {previewUrl && (
+                            <div className="mt-2">
+                                <img src={previewUrl} alt="Preview" className="h-32 w-32 object-cover rounded" />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Динамические атрибуты */}
+                    {selectedCategory && (
+                        <div className="border border-gray-600 rounded-lg p-4">
+                            <h3 className="text-lg font-medium text-white mb-4">Характеристики товара</h3>
+                            {selectedCategory.attributes.map(attr => {
+                                const fieldValue = dynamicFields[attr.name];
+                                console.log(`📝 Rendering field ${attr.name}:`, fieldValue);
+                                
+                                return (
+                                    <div key={attr.name} className="mb-4">
+                                        <label htmlFor={attr.name} className="block text-sm font-medium text-gray-300">
+                                            {attr.nameRus}
+                                            {attr.required && <span className="text-red-500">*</span>}
+                                        </label>
+                                        {Array.isArray(fieldValue) ? (
+                                            fieldValue.map((value, index) => (
+                                                <div key={index} className="flex items-center mb-2">
+                                                    {attr.type === 'date' && (
+                                                        <input
+                                                            type="date"
+                                                            id={`${attr.name}-${index}`}
+                                                            value={value}
+                                                            onChange={(e) => handleDynamicFieldChange(e, attr.name, index)}
+                                                            className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                                            required={attr.required}
+                                                        />
+                                                    )}
+                                                    {attr.type === 'double' && (
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            id={`${attr.name}-${index}`}
+                                                            value={value}
+                                                            onChange={(e) => handleDynamicFieldChange(e, attr.name, index)}
+                                                            className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                                            required={attr.required}
+                                                        />
+                                                    )}
+                                                    {attr.type === 'integer' && (
+                                                        <input
+                                                            type="number"
+                                                            id={`${attr.name}-${index}`}
+                                                            value={value}
+                                                            onChange={(e) => handleDynamicFieldChange(e, attr.name, index)}
+                                                            className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                                            required={attr.required}
+                                                        />
+                                                    )}
+                                                    {attr.type === 'string' && (
+                                                        <input
+                                                            type="text"
+                                                            id={`${attr.name}-${index}`}
+                                                            value={value}
+                                                            onChange={(e) => handleDynamicFieldChange(e, attr.name, index)}
+                                                            className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                                            required={attr.required}
+                                                        />
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveField(attr.name, index)}
+                                                        className="ml-2 px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                                                    >
+                                                        Удалить
+                                                    </button>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div>
+                                                {attr.type === 'date' && (
+                                                    <input
+                                                        type="date"
+                                                        id={attr.name}
+                                                        value={fieldValue || ''}
+                                                        onChange={(e) => handleAttributeChange(e, attr.name)}
+                                                        className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                                        required={attr.required}
+                                                    />
+                                                )}
+                                                {attr.type === 'double' && (
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        id={attr.name}
+                                                        value={fieldValue || ''}
+                                                        onChange={(e) => handleAttributeChange(e, attr.name)}
+                                                        className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                                        required={attr.required}
+                                                    />
+                                                )}
+                                                {attr.type === 'integer' && (
+                                                    <input
+                                                        type="number"
+                                                        id={attr.name}
+                                                        value={fieldValue || ''}
+                                                        onChange={(e) => handleAttributeChange(e, attr.name)}
+                                                        className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                                        required={attr.required}
+                                                    />
+                                                )}
+                                                {attr.type === 'string' && (
+                                                    <input
+                                                        type="text"
+                                                        id={attr.name}
+                                                        value={fieldValue || ''}
+                                                        onChange={(e) => handleAttributeChange(e, attr.name)}
+                                                        className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                                        required={attr.required}
+                                                    />
+                                                )}
+                                            </div>
+                                        )}
+                                        {attr.multiple && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleAddField(attr.name)}
+                                                className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                                            >
+                                                Добавить {attr.nameRus}
+                                            </button>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    <div className="flex justify-end space-x-4">
+                        <button
+                            type="submit"
+                            className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        >
+                            {initialProduct ? 'Создать копию' : 'Создать товар'}
+                        </button>
+                    </div>
+                </form>
             </div>
 
-            {/* Category Selection */}
-            <SelectField
-              label="Категория"
-              placeholder="Выберите категорию"
-              options={categoryOptions}
-              required
-              value={selectedCategory?.id || ''}
-              onChange={handleCategoryChange}
-              onBlur={() => markFieldTouched('category')}
-              error={touched.category ? errors.category : ''}
-              hasError={touched.category && !!errors.category}
+            {/* Barcode Scanner Modal */}
+            <BarcodeScanner
+                isOpen={showBarcodeScanner}
+                onScan={handleBarcodeScan}
+                onClose={() => setShowBarcodeScanner(false)}
             />
-
-            {/* Image Upload */}
-            <ImageUpload
-              file={imageFile}
-              onChange={handleImageChange}
-              previewUrl={previewUrl}
-              error={touched.image ? errors.image : ''}
-              hasError={touched.image && !!errors.image}
-            />
-
-            {/* Market Selection */}
-            <MarketSelector
-              selectedMarkets={selectedMarkets}
-              onMarketsChange={setSelectedMarkets}
-              quantity={quantity}
-              onQuantityChange={setQuantity}
-            />
-
-            {/* Dynamic Attributes */}
-            {selectedCategory && selectedCategory.attributes && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white border-b border-gray-700 pb-2">
-                  Атрибуты продукта
-                </h3>
-                
-                {selectedCategory.attributes.map(attribute => (
-                  <AttributeField
-                    key={attribute.name}
-                    attribute={attribute}
-                    value={dynamicFields[attribute.name]}
-                    onChange={(value) => handleDynamicFieldChange(attribute.name, value)}
-                    onBlur={() => markFieldTouched(attribute.name)}
-                    error={touched[attribute.name] ? errors[attribute.name] : ''}
-                    hasError={touched[attribute.name] && !!errors[attribute.name]}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <div className="flex justify-end pt-6 border-t border-gray-700">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {isSubmitting ? 'Создание...' : 'Создать продукт'}
-              </button>
-            </div>
-          </form>
-          
-          {/* Navigation Buttons */}
-          <div className="flex justify-end space-x-4 pt-4 border-t border-gray-700 mt-4">
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              className="px-6 py-2 border border-gray-600 text-gray-300 rounded-md hover:bg-gray-700 transition-colors"
-              disabled={isSubmitting}
-            >
-              Главная
-            </button>
-            
-            <button
-              type="button"
-              onClick={() => navigate('/all-products')}
-              className="px-6 py-2 border border-gray-600 text-gray-300 rounded-md hover:bg-gray-700 transition-colors"
-              disabled={isSubmitting}
-            >
-              Отмена
-            </button>
-          </div>
         </div>
-      </div>
-      
-      {/* Barcode Scanner Modal */}
-      <BarcodeScanner
-        isOpen={showBarcodeScanner}
-        onScan={handleBarcodeScan}
-        onClose={() => setShowBarcodeScanner(false)}
-      />
-    </div>
-  );
+    );
 };
 
 export default ProductFormNew; 

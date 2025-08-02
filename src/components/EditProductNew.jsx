@@ -101,44 +101,6 @@ const AttributeField = ({ attribute, value, onChange, onBlur, error, hasError })
             </div>
           </div>
         ))}
-      </div>
-    );
-  }
-
-  // Render single field
-  if (name.toLowerCase() === 'barcode') {
-    return (
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-300 mb-2">
-          {nameRus}
-          {required && <span className="text-red-500 ml-1">*</span>}
-        </label>
-        
-        <div className="flex space-x-2">
-          <div className="flex-1">
-            <InputField
-              type="text"
-              value={value || ''}
-              onChange={(e) => onChange(e.target.value)}
-              onBlur={onBlur}
-              placeholder="Enter barcode or scan..."
-              error={error}
-              hasError={hasError}
-            />
-          </div>
-          
-          <button
-            type="button"
-            onClick={() => setShowScanner(true)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center space-x-2"
-            title="Scan barcode"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V6a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1zm12 0h2a1 1 0 001-1V6a1 1 0 00-1-1h-2a1 1 0 00-1 1v1a1 1 0 001 1zM5 20h2a1 1 0 001-1v-1a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1z" />
-            </svg>
-            <span>Scan</span>
-          </button>
-        </div>
         
         {/* Barcode Scanner Modal */}
         <BarcodeScanner
@@ -238,20 +200,32 @@ const EditProductNew = () => {
   const { editProduct, getProduct } = useProducts();
   const { categories, findCategoryById } = useCategories();
   
-  // Local state
-  const [isLoadingProduct, setIsLoadingProduct] = useState(true);
-  const [productError, setProductError] = useState(null);
+  // Form state
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [dynamicFields, setDynamicFields] = useState({});
-  const [attributeIds, setAttributeIds] = useState({});
   const [imageFile, setImageFile] = useState(null);
-  const [currentImageUrl, setCurrentImageUrl] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [barcode, setBarcode] = useState('');
-  const [blobUrl, setBlobUrl] = useState(null);
-  const [originalImageBytes, setOriginalImageBytes] = useState(null);
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [selectedMarkets, setSelectedMarkets] = useState([]);
   const [quantity, setQuantity] = useState(0);
+  const [originalImageBytes, setOriginalImageBytes] = useState(null);
+  
+  // New fields for product data
+  const [productPrice, setProductPrice] = useState('');
+  const [productArticle, setProductArticle] = useState('');
+  const [productQuantity, setProductQuantity] = useState(0);
+  
+  // Package info fields
+  const [packageWidth, setPackageWidth] = useState('');
+  const [packageHeight, setPackageHeight] = useState('');
+  const [packageLength, setPackageLength] = useState('');
+  const [packageWeight, setPackageWeight] = useState('');
+  const [packageQuantity, setPackageQuantity] = useState('');
+
+  // Loading and error states
+  const [isLoadingProduct, setIsLoadingProduct] = useState(true);
+  const [productError, setProductError] = useState(null);
   
   // Form validation
   const {
@@ -263,131 +237,122 @@ const EditProductNew = () => {
     handleFieldBlur,
     handleSubmit,
     updateValue,
-    markFieldTouched,
-    setFormValues
+    markFieldTouched
   } = useProductFormValidation({
     name: '',
     category: null,
     dynamicFields: {},
     imageFile: null
-  }, true); // isEdit = true
+  });
 
   /**
-   * Load product data
+   * Load product data on component mount
    */
-  useEffect(() => {
-    const loadProductData = async () => {
-      if (!productId) return;
-      
+  const loadProductData = async () => {
+    try {
       setIsLoadingProduct(true);
       setProductError(null);
       
-      try {
-        const product = await getProduct(productId);
-        if (!product) {
-          throw new Error('Product not found');
-        }
+      const product = await getProduct(productId);
+      if (!product) {
+        setProductError('Product not found');
+        return;
+      }
 
-        // Set basic product data
-        setFormValues({
-          name: product.name,
-          quantity: product.quantity || 0,
-          category: product.category,
-          dynamicFields: {},
-          imageFile: null
-        });
-        
-        // Set category and barcode
+      // Update form values
+      updateValue('name', product.name);
+      updateValue('imageFile', null);
+      
+      // Set new fields
+      setProductPrice(product.price || '');
+      setProductArticle(product.article || '');
+      setProductQuantity(product.quantity || 0);
+      setBarcode(product.barcode || '');
+      
+      // Set package info
+      if (product.packageInfo) {
+        setPackageWidth(product.packageInfo.width || '');
+        setPackageHeight(product.packageInfo.height || '');
+        setPackageLength(product.packageInfo.length || '');
+        setPackageWeight(product.packageInfo.weight || '');
+        setPackageQuantity(product.packageInfo.quantityInPackage || '');
+      }
+      
+      // Set category
+      if (product.category) {
         const category = findCategoryById(product.category.id);
         setSelectedCategory(category);
-        // Create URL from image data if available
-        if (product.image) {
-          if (typeof product.image === 'string' && product.image.startsWith('/')) {
-            // Handle base64 string
-            const dataUrl = `data:image/jpeg;base64,${product.image}`;
-            setCurrentImageUrl(dataUrl);
-            setOriginalImageBytes(product.image); // Save original base64 for editing
-          } else if (Array.isArray(product.image) && product.image.length > 0) {
-            // Handle byte array
-            const blob = new Blob([new Uint8Array(product.image)], { type: 'image/jpeg' });
-            const newBlobUrl = URL.createObjectURL(blob);
-            setBlobUrl(newBlobUrl);
-            setCurrentImageUrl(newBlobUrl);
-            setOriginalImageBytes(product.image); // Save original bytes for editing
-          }
-        } else if (product.imageUrl) {
-          setCurrentImageUrl(API_URLS.IMAGES.BY_FILENAME(product.imageUrl));
-        } else {
-          setCurrentImageUrl(null);
-        }
-        setBarcode(product.barcode || '');
-
-        // Загружаем данные о маркетах
-        if (product.productMarkets && product.productMarkets.length > 0) {
-          // Используем ProductMarketDto напрямую
-          setSelectedMarkets(product.productMarkets);
-          
-          // Рассчитываем общее количество
-          const totalQuantity = product.productMarkets.reduce((sum, pm) => sum + (pm.quantity || 0), 0);
-          setQuantity(totalQuantity);
-        } else {
-          setSelectedMarkets([]);
-          setQuantity(product.quantity || 0);
-        }
-
-        // Process product attributes
-        const initialFields = {};
-        const initialAttributeIds = {};
-
-        if (product.productAttributeValues) {
-          product.productAttributeValues.forEach(attrValue => {
-            const attrName = attrValue.attribute.name;
-            
-            if (initialFields[attrName]) {
-              // Convert to array for multiple values
-              if (!Array.isArray(initialFields[attrName])) {
-                initialFields[attrName] = [initialFields[attrName]];
-                initialAttributeIds[attrName] = [initialAttributeIds[attrName]];
-              }
-              initialFields[attrName].push(attrValue.value);
-              initialAttributeIds[attrName].push(attrValue.id);
-            } else {
-              // Check if this attribute should be multiple based on category attributes
-              const categoryAttribute = category?.attributes?.find(attr => attr.name === attrName);
-              if (categoryAttribute && categoryAttribute.multiple) {
-                initialFields[attrName] = [attrValue.value];
-                initialAttributeIds[attrName] = [attrValue.id];
-              } else {
-                initialFields[attrName] = attrValue.value;
-                initialAttributeIds[attrName] = attrValue.id;
-              }
-            }
-          });
-        }
-
-        // Initialize empty arrays for multiple attributes that don't have values yet
-        if (category && category.attributes) {
-          category.attributes.forEach(attr => {
-            if (attr.multiple && !initialFields[attr.name]) {
-              initialFields[attr.name] = [''];
-              initialAttributeIds[attr.name] = [];
-            }
-          });
-        }
-
-        setDynamicFields(initialFields);
-        setAttributeIds(initialAttributeIds);
-        
-      } catch (error) {
-        console.error('Failed to load product:', error);
-        setProductError(error.message);
-      } finally {
-        setIsLoadingProduct(false);
+        updateValue('category', category);
       }
-    };
+      
+      // Set dynamic fields
+      if (product.productAttributeValues && product.productAttributeValues.length > 0) {
+        const fields = {};
+        product.productAttributeValues.forEach(attr => {
+          const attrName = attr.attribute.name;
+          if (attr.attribute.multiple) {
+            if (!fields[attrName]) {
+              fields[attrName] = [];
+            }
+            fields[attrName].push(attr.value);
+          } else {
+            fields[attrName] = attr.value;
+          }
+        });
+        setDynamicFields(fields);
+        updateValue('dynamicFields', fields);
+      }
+      
+      // Set markets
+      if (product.productMarkets && product.productMarkets.length > 0) {
+        setSelectedMarkets(product.productMarkets.map(pm => ({
+          id: pm.id,
+          marketId: pm.market.id,
+          market: pm.market,
+          quantity: pm.quantity,
+          price: pm.price
+        })));
+      }
+      
+      // Set image
+      if (product.image) {
+        setOriginalImageBytes(product.image);
+        const imageUrl = `data:image/jpeg;base64,${btoa(String.fromCharCode(...new Uint8Array(product.image)))}`;
+        setPreviewUrl(imageUrl);
+      }
+      
+    } catch (error) {
+      console.error('Error loading product:', error);
+      setProductError('Failed to load product data');
+    } finally {
+      setIsLoadingProduct(false);
+    }
+  };
 
+  /**
+   * Initialize component
+   */
+  useEffect(() => {
     loadProductData();
-  }, [productId, getProduct, findCategoryById, setFormValues]);
+  }, [productId]);
+
+  /**
+   * Initialize dynamic fields when category changes
+   */
+  useEffect(() => {
+    if (selectedCategory) {
+      const initialFields = {};
+      selectedCategory.attributes.forEach(attr => {
+        if (attr.multiple) {
+          initialFields[attr.name] = [''];
+        } else {
+          initialFields[attr.name] = '';
+        }
+      });
+      setDynamicFields(initialFields);
+      updateValue('dynamicFields', initialFields);
+    }
+  }, [selectedCategory, updateValue]);
 
   /**
    * Update form values when state changes
@@ -399,45 +364,11 @@ const EditProductNew = () => {
   }, [selectedCategory, dynamicFields, imageFile, updateValue]);
 
   /**
-   * Cleanup blob URL on unmount
-   */
-  useEffect(() => {
-    return () => {
-      if (blobUrl) {
-        URL.revokeObjectURL(blobUrl);
-      }
-    };
-  }, [blobUrl]);
-
-  /**
-   * Initialize dynamic fields when category changes
-   */
-  useEffect(() => {
-    if (selectedCategory && selectedCategory.attributes) {
-      const initialFields = {};
-      selectedCategory.attributes.forEach(attr => {
-        if (attr.multiple && !dynamicFields[attr.name]) {
-          initialFields[attr.name] = [''];
-        } else if (!dynamicFields[attr.name]) {
-          initialFields[attr.name] = '';
-        }
-      });
-      
-      if (Object.keys(initialFields).length > 0) {
-        setDynamicFields(prev => ({
-          ...prev,
-          ...initialFields
-        }));
-      }
-    }
-  }, [selectedCategory, dynamicFields]);
-
-  /**
    * Handle category selection
    */
   const handleCategoryChange = (event) => {
     const categoryId = parseInt(event.target.value, 10);
-    const category = findCategoryById(categoryId) || null;
+    const category = categories.find(cat => cat.id === categoryId) || null;
     setSelectedCategory(category);
   };
 
@@ -467,37 +398,51 @@ const EditProductNew = () => {
   };
 
   /**
+   * Handle barcode scan
+   */
+  const handleBarcodeScan = (scannedCode) => {
+    setBarcode(scannedCode);
+    setShowBarcodeScanner(false);
+  };
+
+  /**
    * Handle form submission
    */
   const handleFormSubmit = async (formData) => {
     const productData = {
       name: formData.name,
+      price: parseFloat(productPrice),
+      article: productArticle,
       barcode: barcode.trim() || null,
-      quantity: quantity, // Используем quantity из MarketSelector
+      quantity: productQuantity,
       category: {
         id: selectedCategory.id
       },
+      packageInfo: {
+        width: packageWidth ? parseFloat(packageWidth) : null,
+        height: packageHeight ? parseFloat(packageHeight) : null,
+        length: packageLength ? parseFloat(packageLength) : null,
+        weight: packageWeight ? parseFloat(packageWeight) : null,
+        quantityInPackage: packageQuantity ? parseInt(packageQuantity) : null
+      },
       productAttributeValues: Object.entries(dynamicFields).map(([key, value]) => {
         const attribute = selectedCategory.attributes.find(attr => attr.name === key);
-        const attrId = attributeIds[key];
+        const attrId = attribute.id;
         
         if (Array.isArray(value)) {
-          return value.filter(v => v && v.trim()).map((val, index) => {
-            const id = Array.isArray(attrId) ? attrId[index] : null;
-            return {
-              id: id,
-              attribute: {
-                id: attribute.id,
-                name: attribute.name,
-                nameRus: attribute.nameRus,
-                type: attribute.type,
-                required: attribute.required,
-                multiple: attribute.multiple
-              },
-              value: val,
-              productId: parseInt(productId)
-            };
-          });
+          return value.filter(v => v.trim()).map(val => ({
+            id: attrId,
+            attribute: {
+              id: attribute.id,
+              name: attribute.name,
+              nameRus: attribute.nameRus,
+              type: attribute.type,
+              required: attribute.required,
+              multiple: attribute.multiple
+            },
+            value: val,
+            productId: parseInt(productId)
+          }));
         } else {
           if (!value || !value.trim()) return null;
           
@@ -603,21 +548,139 @@ const EditProductNew = () => {
               hasError={touched.name && !!errors.name}
             />
 
+            {/* Price */}
+            <InputField
+              label="Цена"
+              type="number"
+              step="0.01"
+              placeholder="Введите цену..."
+              required
+              value={productPrice}
+              onChange={(e) => setProductPrice(e.target.value)}
+              error=""
+              hasError={false}
+            />
+
+            {/* Article */}
+            <InputField
+              label="Артикул"
+              type="text"
+              placeholder="Артикул товара..."
+              value={productArticle}
+              onChange={(e) => setProductArticle(e.target.value)}
+              error=""
+              hasError={false}
+            />
+
             {/* Barcode Field */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Штрих-код (Необязательно)
               </label>
-              <InputField
-                type="text"
-                value={barcode}
-                onChange={(e) => setBarcode(e.target.value)}
-                placeholder="Введите штрих-код..."
-                inputProps={{
-                  id: 'barcode-input-field',
-                  name: 'barcode'
-                }}
-              />
+              
+              <div className="flex space-x-2">
+                <div className="flex-1">
+                  <InputField
+                    type="text"
+                    value={barcode}
+                    onChange={(e) => setBarcode(e.target.value)}
+                    placeholder="Наведите сканер в любое место и нажмите курок (поддерживаются любые символы)..."
+                    inputProps={{
+                      id: 'barcode-input-field',
+                      name: 'barcode'
+                    }}
+                    onKeyDown={(e) => {
+                      // Auto-submit on Enter key (common for barcode scanners)
+                      if (e.key === 'Enter' && barcode.trim()) {
+                        e.preventDefault();
+                        console.log('✅ Barcode Field - Processing barcode:', barcode.trim());
+                        // The barcode is already set, just close scanner if open
+                        if (showBarcodeScanner) {
+                          setShowBarcodeScanner(false);
+                        }
+                      }
+                    }}
+                  />
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={() => setShowBarcodeScanner(true)}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center space-x-2"
+                  title="Открыть сканер"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V6a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1zm12 0h2a1 1 0 001-1V6a1 1 0 00-1-1h-2a1 1 0 00-1 1v1a1 1 0 001 1zM5 20h2a1 1 0 001-1v-1a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1z" />
+                  </svg>
+                  <span>Сканировать</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quantity */}
+            <InputField
+              label="Количество на складе"
+              type="number"
+              placeholder="Количество..."
+              value={productQuantity}
+              onChange={(e) => setProductQuantity(e.target.value)}
+              error=""
+              hasError={false}
+            />
+
+            {/* Package Info */}
+            <div className="border border-gray-600 rounded-lg p-4 mb-4">
+              <h3 className="text-lg font-medium text-white mb-4">Информация об упаковке</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <InputField
+                  label="Ширина (см)"
+                  type="number"
+                  step="0.1"
+                  value={packageWidth}
+                  onChange={(e) => setPackageWidth(e.target.value)}
+                  error=""
+                  hasError={false}
+                />
+                
+                <InputField
+                  label="Высота (см)"
+                  type="number"
+                  step="0.1"
+                  value={packageHeight}
+                  onChange={(e) => setPackageHeight(e.target.value)}
+                  error=""
+                  hasError={false}
+                />
+                
+                <InputField
+                  label="Длина (см)"
+                  type="number"
+                  step="0.1"
+                  value={packageLength}
+                  onChange={(e) => setPackageLength(e.target.value)}
+                  error=""
+                  hasError={false}
+                />
+                
+                <InputField
+                  label="Вес (кг)"
+                  type="number"
+                  step="0.01"
+                  value={packageWeight}
+                  onChange={(e) => setPackageWeight(e.target.value)}
+                  error=""
+                  hasError={false}
+                />
+                
+                <InputField
+                  label="Количество в упаковке"
+                  type="number"
+                  value={packageQuantity}
+                  onChange={(e) => setPackageQuantity(e.target.value)}
+                  error=""
+                  hasError={false}
+                />
+              </div>
             </div>
 
             {/* Category Selection */}
@@ -637,7 +700,7 @@ const EditProductNew = () => {
             <ImageUpload
               file={imageFile}
               onChange={handleImageChange}
-              currentImageUrl={currentImageUrl}
+              currentImageUrl={previewUrl}
               previewUrl={previewUrl}
               error={touched.image ? errors.image : ''}
               hasError={touched.image && !!errors.image}
@@ -679,7 +742,7 @@ const EditProductNew = () => {
                 disabled={isSubmitting}
                 className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {isSubmitting ? 'Обновление...' : 'Обновить продукт'}
+                {isSubmitting ? 'Сохранение...' : 'Сохранить изменения'}
               </button>
             </div>
           </form>
@@ -706,6 +769,13 @@ const EditProductNew = () => {
           </div>
         </div>
       </div>
+      
+      {/* Barcode Scanner Modal */}
+      <BarcodeScanner
+        isOpen={showBarcodeScanner}
+        onScan={handleBarcodeScan}
+        onClose={() => setShowBarcodeScanner(false)}
+      />
     </div>
   );
 };
