@@ -3,12 +3,16 @@
  * Displays all products with search, filtering, and CRUD operations
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import ProductFormNew from './ProductFormNew.jsx';
 import { API_URLS } from '../config/api-config.js';
+import { getProductsPage } from '../services/productService.js';
+import { useNavigate } from 'react-router-dom';
+import { exportLensesExcel } from '../services/excelService.js';
 
 const ProductAll = () => {
+    const navigate = useNavigate();
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -16,31 +20,30 @@ const ProductAll = () => {
     const [copyProduct, setCopyProduct] = useState(null);
     const [showCopyForm, setShowCopyForm] = useState(false);
 
-    useEffect(() => {
-        fetchProducts();
-        fetchCategories();
-    }, []);
+    // Selection state
+    const [selectedIds, setSelectedIds] = useState(new Set());
 
-    const fetchProducts = async () => {
+    // Pagination state
+    const [page, setPage] = useState(0);
+    const [size, setSize] = useState(50); // по умолчанию побольше
+    const [totalPages, setTotalPages] = useState(0);
+    const [totalElements, setTotalElements] = useState(0);
+
+    useEffect(() => {
+        fetchPage(page, size);
+        fetchCategories();
+    }, [page, size]);
+
+    const fetchPage = async (pageNum = 0, pageSize = 50) => {
         try {
-            const response = await axios.get(API_URLS.PRODUCTS.BASE);
-            console.log('📦 Fetched products:', response.data);
-            
-            // Отладочная информация для первого товара с изображением
-            const productWithImage = response.data.find(p => p.image);
-            if (productWithImage) {
-                console.log('🖼️ Product with image:', {
-                    name: productWithImage.name,
-                    imageType: typeof productWithImage.image,
-                    imageIsArray: Array.isArray(productWithImage.image),
-                    imageLength: productWithImage.image ? productWithImage.image.length : 'null',
-                    imageFirstBytes: productWithImage.image ? productWithImage.image.slice(0, 10) : 'null'
-                });
-            }
-            
-            setProducts(response.data);
+            setLoading(true);
+            const pageData = await getProductsPage(pageNum, pageSize);
+            setProducts(pageData.content || []);
+            setTotalPages(pageData.totalPages || 0);
+            setTotalElements(pageData.totalElements || 0);
+            setSelectedIds(new Set());
         } catch (error) {
-            console.error('Error fetching products:', error);
+            console.error('Error fetching products page:', error);
         } finally {
             setLoading(false);
         }
@@ -59,7 +62,7 @@ const ProductAll = () => {
         if (window.confirm('Вы уверены, что хотите удалить этот товар?')) {
             try {
                 await axios.delete(API_URLS.PRODUCTS.BY_ID(productId));
-                fetchProducts();
+                fetchPage(page, size);
                 alert('Товар успешно удален!');
             } catch (error) {
                 console.error('Error deleting product:', error);
@@ -69,94 +72,156 @@ const ProductAll = () => {
     };
 
     const handleCopyProduct = (product) => {
-        console.log('📋 Copying product:', {
-            name: product.name,
-            hasAttributes: !!product.productAttributeValues,
-            attributesCount: product.productAttributeValues ? product.productAttributeValues.length : 0,
-            attributes: product.productAttributeValues,
-            hasPackageInfo: !!product.packageInfo,
-            packageInfo: product.packageInfo
-        });
-        
         setCopyProduct(product);
         setShowCopyForm(true);
     };
 
     const handleProductCreated = () => {
-        fetchProducts();
-        setShowCreateForm(false);
-        setShowCopyForm(false);
-        setCopyProduct(null);
+        fetchPage(page, size);
+        if (showCopyForm) {
+        } else {
+            setShowCreateForm(false);
+        }
     };
 
-    const formatPrice = (price) => {
-        return new Intl.NumberFormat('ru-RU', {
-            style: 'currency',
-            currency: 'RUB'
-        }).format(price);
+    const handleCardDoubleClick = (product) => {
+        navigate(`/product/${product.id}`, { state: { product } });
     };
 
-    const formatPackageInfo = (packageInfo) => {
-        if (!packageInfo) return 'Не указано';
-        
-        const parts = [];
-        if (packageInfo.width) parts.push(`Ш: ${packageInfo.width}см`);
-        if (packageInfo.height) parts.push(`В: ${packageInfo.height}см`);
-        if (packageInfo.length) parts.push(`Д: ${packageInfo.length}см`);
-        if (packageInfo.weight) parts.push(`Вес: ${packageInfo.weight}кг`);
-        if (packageInfo.quantityInPackage) parts.push(`В упаковке: ${packageInfo.quantityInPackage}шт`);
-        
-        return parts.length > 0 ? parts.join(', ') : 'Не указано';
-    };
-
-    // Функция для конвертации изображения в data URL
-    const convertImageToDataUrl = (imageData) => {
-        console.log('🔄 Converting image data:', {
-            imageData,
-            type: typeof imageData,
-            isArray: Array.isArray(imageData),
-            length: imageData ? imageData.length : 'null',
-            startsWithDataUrl: imageData && imageData.startsWith('data:'),
-            startsWithBase64: imageData && imageData.startsWith('/9j/')
+    // Checkbox selection
+    const toggleSelect = (id) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
         });
-        
-        if (!imageData) {
-            console.log('❌ No image data provided');
-            return null;
-        }
-        
-        // Если уже data URL
-        if (typeof imageData === 'string' && imageData.startsWith('data:')) {
-            console.log('✅ Already a data URL');
-            return imageData;
-        }
-        
-        // Если это base64 строка (начинается с /9j/ для JPEG)
-        if (typeof imageData === 'string' && imageData.startsWith('/9j/')) {
-            console.log('✅ Base64 string detected, converting to data URL');
-            const dataUrl = `data:image/jpeg;base64,${imageData}`;
-            console.log('✅ Created data URL, length:', dataUrl.length);
-            return dataUrl;
-        }
-        
-        // Если это массив байтов
-        if (Array.isArray(imageData)) {
-            console.log('✅ Byte array detected, converting to base64');
-            try {
-                const uint8Array = new Uint8Array(imageData);
-                const base64 = btoa(String.fromCharCode(...uint8Array));
-                const dataUrl = `data:image/jpeg;base64,${base64}`;
-                console.log('✅ Converted byte array to data URL');
-                return dataUrl;
-            } catch (error) {
-                console.error('❌ Error converting byte array:', error);
-                return null;
-            }
-        }
-        
-        console.log('❌ Unknown image data format:', typeof imageData);
-        return null;
     };
+
+    const isSelected = (id) => selectedIds.has(id);
+
+    const selectAllOnPage = () => {
+        setSelectedIds(new Set(products.map(p => p.id)));
+    };
+
+    const clearSelection = () => setSelectedIds(new Set());
+
+    // Drag selection (rectangle)
+    const gridRef = useRef(null);
+    const selectionRef = useRef(null);
+    const startPointRef = useRef(null);
+
+    useEffect(() => {
+        const grid = gridRef.current;
+        if (!grid) return;
+
+        const onMouseDown = (e) => {
+            if (e.button !== 0) return;
+            const rect = grid.getBoundingClientRect();
+            startPointRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
+            const sel = document.createElement('div');
+            sel.style.position = 'absolute';
+            sel.style.border = '1px dashed #60a5fa';
+            sel.style.background = 'rgba(99,102,241,0.15)';
+            sel.style.pointerEvents = 'none';
+            sel.style.left = `${startPointRef.current.x}px`;
+            sel.style.top = `${startPointRef.current.y}px`;
+            sel.style.width = '0px';
+            sel.style.height = '0px';
+            selectionRef.current = sel;
+            grid.appendChild(sel);
+
+            const onMouseMove = (ev) => {
+                const curX = ev.clientX - rect.left;
+                const curY = ev.clientY - rect.top;
+                const x = Math.min(curX, startPointRef.current.x);
+                const y = Math.min(curY, startPointRef.current.y);
+                const w = Math.abs(curX - startPointRef.current.x);
+                const h = Math.abs(curY - startPointRef.current.y);
+                sel.style.left = `${x}px`;
+                sel.style.top = `${y}px`;
+                sel.style.width = `${w}px`;
+                sel.style.height = `${h}px`;
+            };
+
+            const onMouseUp = (ev) => {
+                const selRect = selectionRef.current.getBoundingClientRect();
+                // выбрать карточки, которые пересекаются с selRect
+                const cards = grid.querySelectorAll('[data-card-id]');
+                const next = new Set(selectedIds);
+                cards.forEach((el) => {
+                    const r = el.getBoundingClientRect();
+                    const intersects = !(selRect.right < r.left || selRect.left > r.right || selRect.bottom < r.top || selRect.top > r.bottom);
+                    if (intersects) {
+                        const id = Number(el.getAttribute('data-card-id'));
+                        next.add(id);
+                    }
+                });
+                setSelectedIds(next);
+
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+                if (selectionRef.current) {
+                    selectionRef.current.remove();
+                    selectionRef.current = null;
+                }
+                startPointRef.current = null;
+            };
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        };
+
+        grid.addEventListener('mousedown', onMouseDown);
+        return () => grid.removeEventListener('mousedown', onMouseDown);
+    }, [products, selectedIds]);
+
+    const downloadExcel = async () => {
+        if (selectedIds.size === 0) { alert('Выберите товары'); return; }
+        const blob = await exportLensesExcel(Array.from(selectedIds));
+        const url = window.URL.createObjectURL(new Blob([blob]));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = selectedIds.size === 1 ? `lenses_${Array.from(selectedIds)[0]}.xlsx` : 'lenses_export.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    };
+
+    const PaginationControls = () => (
+        <div className="flex items-center justify-between mt-6">
+            <div className="text-gray-400 text-sm">
+                Всего: {totalElements} • Страниц: {totalPages}
+            </div>
+            <div className="flex items-center space-x-2">
+                <button
+                    className="px-3 py-1 bg-gray-700 text-white rounded disabled:opacity-50"
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page <= 0}
+                >
+                    ← Предыдущая
+                </button>
+                <span className="text-gray-300 text-sm">Стр. {page + 1} из {Math.max(totalPages, 1)}</span>
+                <button
+                    className="px-3 py-1 bg-gray-700 text-white rounded disabled:opacity-50"
+                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                    disabled={page >= totalPages - 1}
+                >
+                    Следующая →
+                </button>
+                <select
+                    className="ml-2 bg-gray-700 text-white rounded px-2 py-1"
+                    value={size}
+                    onChange={(e) => { setPage(0); setSize(parseInt(e.target.value, 10)); }}
+                >
+                    {[10, 20, 50, 100, 500, 1000].map(s => (
+                        <option key={s} value={s}>{s === 1000 ? 'Все (1000)' : `${s} на странице`}</option>
+                    ))}
+                </select>
+            </div>
+        </div>
+    );
 
     if (loading) {
         return (
@@ -212,106 +277,129 @@ const ProductAll = () => {
         <div className="container mx-auto px-4 py-8">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-white">Все товары</h1>
-                <button
-                    onClick={() => setShowCreateForm(true)}
-                    className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-                >
-                    Добавить товар
-                </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {products.map((product) => (
-                    <div key={product.id} className="bg-gray-800 rounded-lg shadow-lg p-6">
-                        <div className="flex justify-between items-start mb-4">
-                            <h3 className="text-lg font-semibold text-white truncate">
-                                {product.name}
-                            </h3>
-                            <div className="flex space-x-2">
-                                <button
-                                    onClick={() => handleCopyProduct(product)}
-                                    className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
-                                    title="Копировать товар"
-                                >
-                                    Копировать
-                                </button>
-                                <button
-                                    onClick={() => handleDelete(product.id)}
-                                    className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700"
-                                    title="Удалить товар"
-                                >
-                                    Удалить
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Отображение изображения */}
-                        {product.image && (
-                            <div className="mb-4">
-                                <img
-                                    src={convertImageToDataUrl(product.image)}
-                                    alt={product.name}
-                                    className="w-full h-32 object-cover rounded"
-                                    onError={(e) => {
-                                        console.error('Error loading image for product:', product.name);
-                                        e.target.style.display = 'none';
-                                    }}
-                                />
-                            </div>
-                        )}
-
-                        <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                                <span className="text-gray-400">Артикул:</span>
-                                <span className="text-white font-mono">{product.article}</span>
-                            </div>
-                            
-                            <div className="flex justify-between">
-                                <span className="text-gray-400">Цена:</span>
-                                <span className="text-green-400 font-semibold">
-                                    {product.price ? formatPrice(product.price) : 'Не указана'}
-                                </span>
-                            </div>
-                            
-                            <div className="flex justify-between">
-                                <span className="text-gray-400">Категория:</span>
-                                <span className="text-white">{product.category?.name || 'Не указана'}</span>
-                            </div>
-                            
-                            <div className="flex justify-between">
-                                <span className="text-gray-400">На складе:</span>
-                                <span className="text-white">{product.quantity || 0} шт.</span>
-                            </div>
-                            
-                            {product.barcode && (
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">Штрих-код:</span>
-                                    <span className="text-white font-mono">{product.barcode}</span>
-                                </div>
-                            )}
-                            
-                            <div className="border-t border-gray-700 pt-2">
-                                <div className="text-gray-400 text-xs mb-1">Упаковка:</div>
-                                <div className="text-white text-xs">
-                                    {formatPackageInfo(product.packageInfo)}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {products.length === 0 && (
-                <div className="text-center py-12">
-                    <p className="text-gray-400 text-lg">Товары не найдены</p>
+                <div className="flex items-center space-x-2">
                     <button
                         onClick={() => setShowCreateForm(true)}
-                        className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                        className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
                     >
-                        Добавить первый товар
+                        Добавить товар
+                    </button>
+                    <button
+                        onClick={selectAllOnPage}
+                        className="px-6 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600"
+                    >
+                        Выделить всё на странице
+                    </button>
+                    <button
+                        onClick={clearSelection}
+                        className="px-6 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600"
+                    >
+                        Очистить выделение
+                    </button>
+                    <button
+                        onClick={downloadExcel}
+                        className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                        disabled={selectedIds.size === 0}
+                    >
+                        Экспорт в Excel (линзы)
                     </button>
                 </div>
-            )}
+            </div>
+
+            <PaginationControls />
+
+            <div ref={gridRef} className="relative">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 select-none">
+                    {products.map((product) => (
+                        <div
+                            key={product.id}
+                            data-card-id={product.id}
+                            className={`bg-gray-800 rounded-lg shadow-lg p-6 cursor-pointer border ${isSelected(product.id) ? 'border-indigo-400' : 'border-transparent'}`}
+                            onDoubleClick={() => handleCardDoubleClick(product)}
+                            onClick={(e) => { if (e.shiftKey) toggleSelect(product.id); }}
+                        >
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center space-x-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={isSelected(product.id)}
+                                        onChange={(e) => {
+                                            e.stopPropagation();
+                                            toggleSelect(product.id);
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <h3 className="text-lg font-semibold text-white truncate">
+                                        {product.name}
+                                    </h3>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleCopyProduct(product); }}
+                                        className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                                        title="Копировать товар"
+                                    >
+                                        Копировать
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); window.location.href = `/edit-product/${product.id}`; }}
+                                        className="px-2 py-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700"
+                                        title="Редактировать товар"
+                                    >
+                                        Редактировать
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleDelete(product.id); }}
+                                        className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700"
+                                        title="Удалить товар"
+                                    >
+                                        Удалить
+                                    </button>
+                                </div>
+                            </div>
+
+                            {product.image && (
+                                <div className="mb-4">
+                                    <img
+                                        src={(() => {
+                                            const img = product.image;
+                                            if (typeof img === 'string') {
+                                                if (img.startsWith('data:')) return img;
+                                                if (img.startsWith('/9j/')) return `data:image/jpeg;base64,${img}`;
+                                            }
+                                            if (Array.isArray(img)) {
+                                                try {
+                                                    const base64 = btoa(String.fromCharCode(...new Uint8Array(img)));
+                                                    return `data:image/jpeg;base64,${base64}`;
+                                                } catch (_) { return null; }
+                                            }
+                                            return null;
+                                        })()}
+                                        alt={product.name}
+                                        className="w-full h-32 object-cover rounded"
+                                        onError={(e) => { e.target.style.display = 'none'; }}
+                                    />
+                                </div>
+                            )}
+
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-400">Артикул:</span>
+                                    <span className="text-white font-mono">{product.article}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-400">Цена:</span>
+                                    <span className="text-green-400 font-semibold">
+                                        {product.price ? new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(product.price) : 'Не указана'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <PaginationControls />
         </div>
     );
 };

@@ -26,6 +26,7 @@ const ProductDetail = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState('');
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [isImageFullscreen, setIsImageFullscreen] = useState(false);
 
   const { scannedBarcode, resetBarcode } = useBarcodeScanner();
 
@@ -132,6 +133,22 @@ const ProductDetail = () => {
     return `${attrValue.attribute.nameRus}: ${attrValue.value}`;
   };
 
+  const getImageSrc = (product) => {
+    const img = product?.image;
+    if (!img && product?.imageUrl) return product.imageUrl;
+    if (typeof img === 'string') {
+      if (img.startsWith('data:')) return img;
+      if (img.startsWith('/9j/')) return `data:image/jpeg;base64,${img}`;
+    }
+    if (Array.isArray(img)) {
+      try {
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(img)));
+        return `data:image/jpeg;base64,${base64}`;
+      } catch (_) { return null; }
+    }
+    return null;
+  };
+
   // Loading state
   if (isLoading) {
     return <LoadingSpinner message="Загрузка продукта..." />;
@@ -149,7 +166,7 @@ const ProductDetail = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="mb-6">
           <div className="flex justify-between items-center">
@@ -193,12 +210,39 @@ const ProductDetail = () => {
         {/* Error Message */}
         {error && <ErrorMessage message={error} />}
 
-        {/* Product Details */}
+        {/* Large Image Preview */}
+        {getImageSrc(product) && (
+          <div className="mb-6">
+            <img
+              src={getImageSrc(product)}
+              alt={product.name}
+              className="w-full max-h-[480px] object-contain rounded cursor-zoom-in bg-black"
+              onClick={() => setIsImageFullscreen(true)}
+            />
+            <p className="text-gray-400 text-sm mt-2">Кликните по изображению, чтобы развернуть на весь экран</p>
+          </div>
+        )}
+
+        {/* Product Details Card */}
         <ProductCard
           product={product}
           variant="detail"
           showActions={false}
         />
+
+        {/* Fullscreen Image Modal */}
+        {isImageFullscreen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center"
+            onClick={() => setIsImageFullscreen(false)}
+          >
+            <img
+              src={getImageSrc(product)}
+              alt={product.name}
+              className="max-w-[95vw] max-h-[95vh] object-contain cursor-zoom-out"
+            />
+          </div>
+        )}
 
         {/* Navigation */}
         <div className="flex justify-between pt-6">

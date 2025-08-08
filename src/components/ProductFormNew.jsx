@@ -12,17 +12,17 @@ import { API_URLS } from '../config/api-config.js';
 import axios from 'axios'; // Added axios import
 
 const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, locationState = null }) => {
-    const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
     const [productAttributes, setProductAttributes] = useState({});
     const [productName, setProductName] = useState('');
     const [productPrice, setProductPrice] = useState('');
     const [productArticle, setProductArticle] = useState('');
     const [productBarcode, setProductBarcode] = useState('');
     const [productQuantity, setProductQuantity] = useState(0);
-    const [dynamicFields, setDynamicFields] = useState({});
-    const [imageFile, setImageFile] = useState(null);
-    const [previewUrl, setPreviewUrl] = useState(null);
-    const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [dynamicFields, setDynamicFields] = useState({});
+  const [imageFile, setImageFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
     
     // Поля упаковки
     const [packageWidth, setPackageWidth] = useState('');
@@ -37,10 +37,10 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
         const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
         const article = (timestamp + random).slice(-12);
         return article;
-    };
+  };
 
     // Инициализация формы при копировании товара или переходе с главной страницы
-    useEffect(() => {
+  useEffect(() => {
         if (initialProduct) {
             setProductName(initialProduct.name || '');
             setProductPrice(initialProduct.price || '');
@@ -120,7 +120,7 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
             initialProduct.productAttributeValues.forEach(attrValue => {
                 const attrName = attrValue.attribute.name;
                 const categoryAttr = selectedCategory.attributes.find(attr => attr.name === attrName);
-                
+            
                 if (categoryAttr) {
                     if (categoryAttr.multiple) {
                         // Для множественных атрибутов добавляем в массив
@@ -128,7 +128,7 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
                             attributeFields[attrName] = [];
                         }
                         attributeFields[attrName].push(attrValue.value);
-                    } else {
+            } else {
                         // Для одиночных атрибутов устанавливаем значение
                         attributeFields[attrName] = attrValue.value;
                     }
@@ -137,7 +137,7 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
             
             console.log('📋 Copied attribute fields:', attributeFields);
             setDynamicFields(attributeFields);
-        }
+          }
     }, [initialProduct, selectedCategory]);
 
     const handleCategoryChange = (event) => {
@@ -153,7 +153,7 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
             [fieldName]: value
         });
     };
-
+          
     const handleDynamicFieldChange = (event, fieldName, index) => {
         const { value } = event.target;
         const updatedFields = { ...dynamicFields };
@@ -200,48 +200,48 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
         event.preventDefault();
         
         // Собираем данные о товаре
-        const productData = {
+    const productData = {
             name: productName,
             price: parseFloat(productPrice),
             barcode: productBarcode,
             quantity: parseInt(productQuantity),
-            category: {
-                id: selectedCategory.id
-            },
+      category: {
+        id: selectedCategory.id
+      },
             packageInfo: {
                 width: packageWidth ? parseFloat(packageWidth) : null,
                 height: packageHeight ? parseFloat(packageHeight) : null,
                 length: packageLength ? parseFloat(packageLength) : null,
                 weight: packageWeight ? parseFloat(packageWeight) : null,
                 quantityInPackage: packageQuantity ? parseInt(packageQuantity) : null
-            },
-            productAttributeValues: Object.entries(dynamicFields).map(([key, value]) => {
-                const attribute = selectedCategory.attributes.find(attr => attr.name === key);
-                if (Array.isArray(value)) {
+      },
+      productAttributeValues: Object.entries(dynamicFields).map(([key, value]) => {
+        const attribute = selectedCategory.attributes.find(attr => attr.name === key);
+        if (Array.isArray(value)) {
                     return value.map(val => ({
-                        attribute: {
-                            id: attribute.id,
-                            name: attribute.name,
-                            nameRus: attribute.nameRus,
-                            type: attribute.type,
-                            required: attribute.required,
-                            multiple: attribute.multiple
-                        },
-                        value: val
-                    }));
-                } else {
-                    return {
-                        attribute: {
-                            id: attribute.id,
-                            name: attribute.name,
-                            nameRus: attribute.nameRus,
-                            type: attribute.type,
-                            required: attribute.required,
-                            multiple: attribute.multiple
-                        },
-                        value: value
-                    };
-                }
+            attribute: {
+              id: attribute.id,
+              name: attribute.name,
+              nameRus: attribute.nameRus,
+              type: attribute.type,
+              required: attribute.required,
+              multiple: attribute.multiple
+            },
+            value: val
+          }));
+        } else {
+          return {
+            attribute: {
+              id: attribute.id,
+              name: attribute.name,
+              nameRus: attribute.nameRus,
+              type: attribute.type,
+              required: attribute.required,
+              multiple: attribute.multiple
+            },
+            value: value
+          };
+        }
             }).flat()
         };
 
@@ -261,20 +261,26 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
             console.log('Product created successfully:', response.data);
             alert('Товар успешно добавлен!');
 
-            // Сбрасываем форму
-            setProductName('');
-            setProductPrice('');
-            setProductBarcode('');
-            setProductQuantity(0);
-            setPackageWidth('');
-            setPackageHeight('');
-            setPackageLength('');
-            setPackageWeight('');
-            setPackageQuantity('');
-            setImageFile(null);
-            setPreviewUrl(null);
-            setSelectedCategory(null);
-            setDynamicFields({});
+            // Очищаем только уникальные поля, остальные оставляем заполненными
+            setProductName(''); // Имя товара должно быть уникальным
+            setProductBarcode(''); // Штрих-код должен быть уникальным
+            
+            // Генерируем новый артикул для следующего товара
+            const newArticle = generateArticle();
+            setProductArticle(newArticle);
+            
+            // Остальные поля оставляем заполненными для создания похожего товара
+            // setProductPrice(''); // Оставляем цену
+            // setProductQuantity(0); // Оставляем количество
+            // setPackageWidth(''); // Оставляем размеры упаковки
+            // setPackageHeight('');
+            // setPackageLength('');
+            // setPackageWeight('');
+            // setPackageQuantity('');
+            // setImageFile(null); // Оставляем изображение
+            // setPreviewUrl(null);
+            // setSelectedCategory(null); // Оставляем категорию
+            // setDynamicFields({}); // Оставляем атрибуты
             
             if (onProductCreated) {
                 onProductCreated(response.data);
@@ -285,8 +291,8 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
         }
     };
 
-    return (
-        <div className="container mx-auto px-4 py-8">
+  return (
+    <div className="container mx-auto px-4 py-8">
             <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-4xl mx-auto">
                 <h2 className="text-2xl font-bold text-white mb-6">
                     {initialProduct ? 'Копирование товара' : 'Добавление нового товара'}
@@ -301,7 +307,7 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
                         <p className="text-sm">
                             📝 Штрих-код предзаполнен: <strong>{locationState.barcode}</strong>
                         </p>
-                    </div>
+        </div>
                 )}
                 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -312,19 +318,19 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
                                 Название товара <span className="text-red-500">*</span>
                             </label>
                             <input
-                                type="text"
+              type="text"
                                 id="productName"
                                 value={productName}
                                 onChange={(e) => setProductName(e.target.value)}
                                 className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                required
+              required
                             />
                         </div>
                         
                         <div>
                             <label htmlFor="productPrice" className="block text-sm font-medium text-gray-300">
                                 Цена <span className="text-red-500">*</span>
-                            </label>
+              </label>
                             <input
                                 type="number"
                                 step="0.01"
@@ -333,9 +339,9 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
                                 onChange={(e) => setProductPrice(e.target.value)}
                                 className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                 required
-                            />
-                        </div>
-                        
+                />
+              </div>
+                
                         <div>
                             <label htmlFor="productBarcode" className="block text-sm font-medium text-gray-300">
                                 Штрих-код
@@ -349,20 +355,20 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
                                     className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                     placeholder="Введите штрих-код или отсканируйте..."
                                 />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowBarcodeScanner(true)}
+                <button
+                  type="button"
+                  onClick={() => setShowBarcodeScanner(true)}
                                     className="mt-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center space-x-2"
                                     title="Сканировать штрих-код"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V6a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1zm12 0h2a1 1 0 001-1V6a1 1 0 00-1-1h-2a1 1 0 00-1 1v1a1 1 0 001 1zM5 20h2a1 1 0 001-1v-1a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1z" />
-                                    </svg>
-                                    <span>Сканировать</span>
-                                </button>
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V6a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1zm12 0h2a1 1 0 001-1V6a1 1 0 00-1-1h-2a1 1 0 00-1 1v1a1 1 0 001 1zM5 20h2a1 1 0 001-1v-1a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1z" />
+                  </svg>
+                  <span>Сканировать</span>
+                </button>
                             </div>
-                        </div>
-                        
+              </div>
+              
                         <div>
                             <label htmlFor="productQuantity" className="block text-sm font-medium text-gray-300">
                                 Количество на складе
@@ -374,8 +380,8 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
                                 onChange={(e) => setProductQuantity(e.target.value)}
                                 className="mt-1 block w-full px-3 py-2 border border-gray-700 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                             />
-                        </div>
-                    </div>
+              </div>
+            </div>
 
                     {/* Категория */}
                     <div>
@@ -387,7 +393,7 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
                             value={selectedCategory ? selectedCategory.id : ''}
                             onChange={handleCategoryChange}
                             className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-700 bg-gray-700 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                            required
+              required
                         >
                             <option value="">Выберите категорию</option>
                             {categories.map(category => (
@@ -486,8 +492,8 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
                         {previewUrl && (
                             <div className="mt-2">
                                 <img src={previewUrl} alt="Preview" className="h-32 w-32 object-cover rounded" />
-                            </div>
-                        )}
+              </div>
+            )}
                     </div>
 
                     {/* Динамические атрибуты */}
@@ -548,14 +554,14 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
                                                             required={attr.required}
                                                         />
                                                     )}
-                                                    <button
+              <button
                                                         type="button"
                                                         onClick={() => handleRemoveField(attr.name, index)}
                                                         className="ml-2 px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-                                                    >
+              >
                                                         Удалить
-                                                    </button>
-                                                </div>
+              </button>
+            </div>
                                             ))
                                         ) : (
                                             <div>
@@ -603,13 +609,13 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
                                             </div>
                                         )}
                                         {attr.multiple && (
-                                            <button
-                                                type="button"
+            <button
+              type="button"
                                                 onClick={() => handleAddField(attr.name)}
                                                 className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-                                            >
+            >
                                                 Добавить {attr.nameRus}
-                                            </button>
+            </button>
                                         )}
                                     </div>
                                 );
@@ -618,24 +624,24 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
                     )}
 
                     <div className="flex justify-end space-x-4">
-                        <button
+            <button
                             type="submit"
                             className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         >
                             {initialProduct ? 'Создать копию' : 'Создать товар'}
-                        </button>
-                    </div>
+            </button>
+          </div>
                 </form>
-            </div>
-
-            {/* Barcode Scanner Modal */}
-            <BarcodeScanner
-                isOpen={showBarcodeScanner}
-                onScan={handleBarcodeScan}
-                onClose={() => setShowBarcodeScanner(false)}
-            />
-        </div>
-    );
+      </div>
+      
+      {/* Barcode Scanner Modal */}
+      <BarcodeScanner
+        isOpen={showBarcodeScanner}
+        onScan={handleBarcodeScan}
+        onClose={() => setShowBarcodeScanner(false)}
+      />
+    </div>
+  );
 };
 
 export default ProductFormNew; 

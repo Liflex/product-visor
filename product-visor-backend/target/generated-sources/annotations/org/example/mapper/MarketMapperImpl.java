@@ -8,8 +8,8 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-08-02T16:34:32+0300",
-    comments = "version: 1.6.2, compiler: Eclipse JDT (IDE) 3.42.50.v20250628-1110, environment: Java 21.0.7 (Azul Systems, Inc.)"
+    date = "2025-08-08T22:01:52+0300",
+    comments = "version: 1.6.2, compiler: javac, environment: Java 17.0.14 (Azul Systems, Inc.)"
 )
 @Component
 public class MarketMapperImpl implements MarketMapper {
@@ -22,14 +22,14 @@ public class MarketMapperImpl implements MarketMapper {
 
         MarketDto marketDto = new MarketDto();
 
-        marketDto.setDescription( market.getDescription() );
         marketDto.setId( market.getId() );
+        marketDto.setName( market.getName() );
+        marketDto.setDescription( market.getDescription() );
+        marketDto.setImageUrl( market.getImageUrl() );
         byte[] image = market.getImage();
         if ( image != null ) {
             marketDto.setImage( Arrays.copyOf( image, image.length ) );
         }
-        marketDto.setImageUrl( market.getImageUrl() );
-        marketDto.setName( market.getName() );
 
         return marketDto;
     }
@@ -42,14 +42,14 @@ public class MarketMapperImpl implements MarketMapper {
 
         Market market = new Market();
 
-        market.setDescription( dto.getDescription() );
         market.setId( dto.getId() );
+        market.setName( dto.getName() );
+        market.setDescription( dto.getDescription() );
+        market.setImageUrl( dto.getImageUrl() );
         byte[] image = dto.getImage();
         if ( image != null ) {
             market.setImage( Arrays.copyOf( image, image.length ) );
         }
-        market.setImageUrl( dto.getImageUrl() );
-        market.setName( dto.getName() );
 
         return market;
     }

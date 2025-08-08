@@ -10,6 +10,10 @@ import org.example.mapper.ProductMapper;
 import org.example.service.ProductService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -88,11 +92,15 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ProductDto>> findAll() {
-        logger.info("📋 Fetching all products");
-        List<Product> products = service.findAll();
-        logger.info("✅ Found {} products", products.size());
-        return ResponseEntity.ok(products.stream().map(mapper::toDto).toList());
+    public ResponseEntity<Page<ProductDto>> findAll(
+            @RequestParam(value = "page", required = false, defaultValue = "0") int page,
+            @RequestParam(value = "size", required = false, defaultValue = "10") int size
+    ) {
+        logger.info("📋 Fetching products with pagination: page={}, size={}", page, size);
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Product> productPage = service.findAll(pageable);
+        Page<ProductDto> dtos = productPage.map(mapper::toDto);
+        return ResponseEntity.ok(dtos);
     }
 
     @GetMapping("/barcode")
@@ -103,6 +111,20 @@ public class ProductController {
 
         logger.info("✅ Product found by barcode: {} -> Product ID: {}", barcode, product.get().getId());
         return ResponseEntity.ok(mapper.toDto(product.get()));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<Page<ProductDto>> search(
+            @RequestParam("q") String q,
+            @RequestParam(value = "page", required = false, defaultValue = "0") int page,
+            @RequestParam(value = "size", required = false, defaultValue = "10") int size
+    ) {
+        logger.info("🔎 Searching products: q='{}', page={}, size={}", q, page, size);
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Product> productPage = service.search(q, pageable);
+        List<ProductDto> dtos = productPage.getContent().stream().map(mapper::toDto).toList();
+        Page<ProductDto> dtoPage = new PageImpl<>(dtos, pageable, productPage.getTotalElements());
+        return ResponseEntity.ok(dtoPage);
     }
 
     @GetMapping("/{id}")

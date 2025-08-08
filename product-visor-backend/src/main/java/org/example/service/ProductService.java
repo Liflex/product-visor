@@ -3,23 +3,18 @@ package org.example.service;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
-import org.example.dto.ProductDto;
-import org.example.entity.Category;
-import org.example.entity.Market;
 import org.example.entity.Product;
-import org.example.entity.ProductMarket;
 import org.example.mapper.ProductMapper;
 import org.example.repository.ProductRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.crossstore.ChangeSetPersister;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
@@ -36,11 +31,10 @@ public class ProductService {
      * Генерирует уникальный 12-значный артикул
      */
     private String generateArticle() {
-        Random random = new Random();
+        java.util.Random random = new java.util.Random();
         String article;
         do {
-            // Генерируем 12-значное число
-            long number = 100000000000L + random.nextLong(900000000000L);
+            long number = 100000000000L + Math.abs(random.nextLong() % 900000000000L);
             article = String.valueOf(number);
         } while (productRepository.findByArticle(article).isPresent());
         
@@ -51,7 +45,6 @@ public class ProductService {
     public Product save(Product entity) {
         if (entity.getId() == null) {
             logger.info("💾 Saving new product: name={}", entity.getName());
-            // Генерируем артикул для нового товара
             if (entity.getArticle() == null || entity.getArticle().trim().isEmpty()) {
                 entity.setArticle(generateArticle());
                 logger.info("Generated article for new product: {}", entity.getArticle());
@@ -74,6 +67,13 @@ public class ProductService {
         List<Product> products = productRepository.findAll();
         logger.debug("✅ Found {} products", products.size());
         return products;
+    }
+
+    public Page<Product> findAll(Pageable pageable) {
+        logger.debug("📋 Fetching products page: page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
+        Page<Product> page = productRepository.findAll(pageable);
+        logger.debug("✅ Page loaded: totalElements={}, totalPages={}", page.getTotalElements(), page.getTotalPages());
+        return page;
     }
 
     public Optional<Product> findByBarcode(String barcode) {
@@ -113,5 +113,10 @@ public class ProductService {
         
         productRepository.deleteById(id);
         logger.info("✅ Product deleted successfully: id={}", id);
+    }
+
+    public Page<Product> search(String query, Pageable pageable) {
+        logger.debug("🔎 Searching products by query: '{}'", query);
+        return productRepository.searchFullText(query, pageable);
     }
 }

@@ -3,12 +3,30 @@
  * Provides welcome screen and overview of the Product Visor application
  */
 
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useProducts } from '../hooks/use-products.js';
 import { useCategories } from '../hooks/use-categories.js';
 import useBarcodeScanner from '../hooks/use-barcode-scanner.js';
 import Notification from './ui/notification.jsx';
+import { findProductByBarcode, searchProductsPage } from '../services/productService.js';
+
+// Вспомогательная функция для получения src изображения продукта
+const getImageSrc = (product) => {
+  const img = product?.image;
+  if (!img && product?.imageUrl) return product.imageUrl;
+  if (typeof img === 'string') {
+    if (img.startsWith('data:')) return img;
+    if (img.startsWith('/9j/')) return `data:image/jpeg;base64,${img}`;
+  }
+  if (Array.isArray(img)) {
+    try {
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(img)));
+      return `data:image/jpeg;base64,${base64}`;
+    } catch (_) { return null; }
+  }
+  return null;
+};
 
 /**
  * Statistics card component
@@ -53,11 +71,113 @@ const FeatureCard = ({ title, description, icon }) => (
 const Home = () => {
   const { totalProducts, filteredCount } = useProducts();
   const { totalCategories } = useCategories();
+  const navigate = useNavigate();
   
   // Global barcode scanner
   const { notification, hideNotification } = useBarcodeScanner({
     enabled: true
   });
+
+  // Manual barcode search state
+  const [barcodeSearch, setBarcodeSearch] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
+
+  // Full-text search state
+  const [fullQuery, setFullQuery] = useState('');
+  const [fullPage, setFullPage] = useState(0);
+  const [fullSize, setFullSize] = useState(10);
+  const [fullResults, setFullResults] = useState([]);
+  const [fullTotalPages, setFullTotalPages] = useState(0);
+  const [fullTotalElements, setFullTotalElements] = useState(0);
+  const [fullLoading, setFullLoading] = useState(false);
+  const [fullError, setFullError] = useState('');
+
+  // Handle manual barcode search
+  const handleBarcodeSearch = async (e) => {
+    e.preventDefault();
+    
+    if (!barcodeSearch.trim()) {
+      setSearchError('Введите штрих-код для поиска');
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchError('');
+
+    try {
+      const product = await findProductByBarcode(barcodeSearch.trim());
+      
+      if (product) {
+        navigate(`/product/${product.id}`);
+      } else {
+        navigate('/add-product', { 
+          state: { barcode: barcodeSearch.trim() } 
+        });
+      }
+    } catch (error) {
+      console.error('Error searching product by barcode:', error);
+      setSearchError('Ошибка при поиске товара');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Handle full-text search submit
+  const handleFullSearch = async (e) => {
+    e.preventDefault();
+    if (!fullQuery.trim()) {
+      setFullError('Введите запрос для поиска');
+      return;
+    }
+    try {
+      setFullLoading(true);
+      setFullError('');
+      const pageData = await searchProductsPage(fullQuery.trim(), fullPage, fullSize);
+      setFullResults(pageData.content || []);
+      setFullTotalPages(pageData.totalPages || 0);
+      setFullTotalElements(pageData.totalElements || 0);
+    } catch (err) {
+      console.error('Error full-text searching:', err);
+      setFullError('Ошибка при поиске');
+    } finally {
+      setFullLoading(false);
+    }
+  };
+
+  const FullSearchPagination = () => (
+    <div className="flex items-center justify-between mt-4">
+      <div className="text-gray-400 text-sm">
+        Найдено: {fullTotalElements} • Страниц: {fullTotalPages}
+      </div>
+      <div className="flex items-center space-x-2">
+        <button
+          className="px-3 py-1 bg-gray-700 text-white rounded disabled:opacity-50"
+          onClick={async () => { if (fullPage>0){const p=fullPage-1; setFullPage(p); await searchProductsPage(fullQuery, p, fullSize).then(d=>{setFullResults(d.content||[]);setFullTotalPages(d.totalPages||0);setFullTotalElements(d.totalElements||0);});}}}
+          disabled={fullPage <= 0}
+        >
+          ← Предыдущая
+        </button>
+        <span className="text-gray-300 text-sm">Стр. {fullPage + 1} из {Math.max(fullTotalPages, 1)}</span>
+        <button
+          className="px-3 py-1 bg-gray-700 text-white rounded disabled:opacity-50"
+          onClick={async () => { if (fullPage < fullTotalPages-1){const p=fullPage+1; setFullPage(p); await searchProductsPage(fullQuery, p, fullSize).then(d=>{setFullResults(d.content||[]);setFullTotalPages(d.totalPages||0);setFullTotalElements(d.totalElements||0);});}}}
+          disabled={fullPage >= fullTotalPages - 1}
+        >
+          Следующая →
+        </button>
+        <select
+          className="ml-2 bg-gray-700 text-white rounded px-2 py-1"
+          value={fullSize}
+          onChange={async (e) => { const s=parseInt(e.target.value,10); setFullSize(s); const p=0; setFullPage(p); const d=await searchProductsPage(fullQuery, p, s); setFullResults(d.content||[]); setFullTotalPages(d.totalPages||0); setFullTotalElements(d.totalElements||0); }}
+        >
+          {[10,20,50].map(s => (
+            <option key={s} value={s}>{s} на странице</option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
 
   const features = [
     {
@@ -94,7 +214,91 @@ const Home = () => {
           Ваше комплексное решение для управления инвентарем контактных линз. 
           Отслеживайте, ищите и управляйте продуктами с легкостью и точностью.
         </p>
-        <div className="flex justify-center space-x-4">
+
+        {/* Barcode Search Form */}
+        <div className="max-w-md mx-auto mb-8">
+          <form onSubmit={handleBarcodeSearch} className="space-y-4">
+            <div className="relative">
+              <input
+                type="text"
+                value={barcodeSearch}
+                onChange={(e) => setBarcodeSearch(e.target.value)}
+                placeholder="Введите штрих-код товара..."
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                disabled={isSearching}
+              />
+              <button
+                type="submit"
+                disabled={isSearching}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 px-4 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
+              >
+                {isSearching ? 'Поиск...' : '🔍'}
+              </button>
+            </div>
+            {searchError && (
+              <p className="text-red-400 text-sm">{searchError}</p>
+            )}
+          </form>
+          <p className="text-sm text-gray-500 mt-2">
+            Или используйте сканер штрих-кода (нажмите любую клавишу)
+          </p>
+        </div>
+
+        {/* Full-text Search */}
+        <div className="max-w-3xl mx-auto">
+          <form onSubmit={handleFullSearch} className="flex items-center space-x-2">
+            <input
+              type="text"
+              value={fullQuery}
+              onChange={(e) => setFullQuery(e.target.value)}
+              placeholder="Поиск по всем полям и атрибутам..."
+              className="flex-1 px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+            <button
+              type="submit"
+              className="px-4 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+            >
+              Найти
+            </button>
+          </form>
+
+          {/* Results */}
+          {fullLoading && (
+            <div className="flex justify-center items-center h-24">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500"></div>
+            </div>
+          )}
+
+          {fullError && (
+            <p className="text-red-400 mt-3">{fullError}</p>
+          )}
+
+          {!fullLoading && fullResults.length > 0 && (
+            <div className="mt-4 bg-gray-800 rounded-lg p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {fullResults.map(p => (
+                  <div key={p.id} className="bg-gray-700 rounded p-3 cursor-pointer" onDoubleClick={() => navigate(`/product/${p.id}`, { state: { product: p } })}>
+                    {/* превью изображения */}
+                    {getImageSrc(p) && (
+                      <img
+                        src={getImageSrc(p)}
+                        alt={p.name}
+                        className="w-full h-32 object-cover rounded mb-2"
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                      />
+                    )}
+                    <div className="text-white font-semibold truncate">{p.name}</div>
+                    <div className="text-gray-300 text-sm">{p.category?.name || 'Без категории'}</div>
+                    <div className="text-gray-400 text-xs mt-1">Артикул: {p.article} • ШК: {p.barcode || '—'}</div>
+                  </div>
+                ))}
+              </div>
+              <FullSearchPagination />
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-center space-x-4 mt-8">
           <Link
             to="/add-product"
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-md transition-colors font-medium"
@@ -107,75 +311,6 @@ const Home = () => {
           >
             Просмотреть каталог
           </Link>
-        </div>
-      </div>
-
-      {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard
-          title="Всего продуктов"
-          value={totalProducts || 0}
-          icon="📦"
-          description="Продуктов в вашем инвентаре"
-          linkTo="/all-products"
-          linkText="Просмотреть все продукты"
-        />
-        <StatCard
-          title="Категории"
-          value={totalCategories || 0}
-          icon="🏷️"
-          description="Доступных категорий продуктов"
-        />
-        <StatCard
-          title="Быстрые действия"
-          value="🚀"
-          icon="⚡"
-          description="Начать управление инвентарем"
-          linkTo="/add-product"
-          linkText="Добавить новый продукт"
-        />
-      </div>
-
-      {/* Features */}
-      <div>
-        <h2 className="text-2xl font-bold text-white mb-6 text-center">Ключевые возможности</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {features.map((feature, index) => (
-            <FeatureCard
-              key={index}
-              title={feature.title}
-              description={feature.description}
-              icon={feature.icon}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Getting Started */}
-      <div className="bg-gray-800 rounded-lg p-8">
-        <h2 className="text-2xl font-bold text-white mb-4">Начало работы</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="text-center">
-            <div className="text-3xl mb-2">1️⃣</div>
-            <h3 className="font-semibold text-white mb-2">Добавьте продукты</h3>
-            <p className="text-gray-400 text-sm">
-              Начните с добавления ваших контактных линз с подробными атрибутами.
-            </p>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl mb-2">2️⃣</div>
-            <h3 className="font-semibold text-white mb-2">Организуйте и ищите</h3>
-            <p className="text-gray-400 text-sm">
-              Используйте категории и функции поиска для быстрого поиска продуктов.
-            </p>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl mb-2">3️⃣</div>
-            <h3 className="font-semibold text-white mb-2">Управляйте инвентарем</h3>
-            <p className="text-gray-400 text-sm">
-              Отслеживайте сроки годности, уровни запасов и спецификации продуктов.
-            </p>
-          </div>
         </div>
       </div>
       </div>

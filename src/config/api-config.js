@@ -5,7 +5,7 @@
 
 // Base API configuration
 export const API_CONFIG = {
-  BASE_URL: 'http://localhost:8085',
+  BASE_URL: 'http://192.168.1.59:8085',
   API_VERSION: 'v1',
   TIMEOUT: 10000,
   

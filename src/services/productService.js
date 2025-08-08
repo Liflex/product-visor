@@ -20,6 +20,30 @@ export const getProducts = async () => {
   }
 };
 
+export const getProductsPage = async (page = 0, size = 10) => {
+  try {
+    const response = await httpClient.get(ENDPOINTS.PRODUCTS.BASE, {
+      params: { page, size }
+    });
+    return response.data; // Spring Page<ProductDto>
+  } catch (error) {
+    console.error('Error fetching products page:', error);
+    throw error;
+  }
+};
+
+export const searchProductsPage = async (q, page = 0, size = 10) => {
+  try {
+    const response = await httpClient.get(ENDPOINTS.PRODUCTS.SEARCH, {
+      params: { q, page, size }
+    });
+    return response.data; // Spring Page<ProductDto>
+  } catch (error) {
+    console.error('Error searching products page:', error);
+    throw error;
+  }
+};
+
 /**
  * Get product by ID
  * @param {number} id - Product ID

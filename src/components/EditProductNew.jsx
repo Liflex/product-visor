@@ -198,7 +198,7 @@ const EditProductNew = () => {
   const navigate = useNavigate();
   const { productId } = useParams();
   const { editProduct, getProduct } = useProducts();
-  const { categories, findCategoryById } = useCategories();
+  const { categories, findCategoryById, isLoading: categoriesLoading } = useCategories();
   
   // Form state
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -210,6 +210,7 @@ const EditProductNew = () => {
   const [selectedMarkets, setSelectedMarkets] = useState([]);
   const [quantity, setQuantity] = useState(0);
   const [originalImageBytes, setOriginalImageBytes] = useState(null);
+  const [productCategoryId, setProductCategoryId] = useState(null);
   
   // New fields for product data
   const [productPrice, setProductPrice] = useState('');
@@ -243,21 +244,21 @@ const EditProductNew = () => {
     category: null,
     dynamicFields: {},
     imageFile: null
-  });
+  }, true);
 
   /**
    * Load product data on component mount
    */
-  const loadProductData = async () => {
+    const loadProductData = async () => {
     try {
       setIsLoadingProduct(true);
       setProductError(null);
       
-      const product = await getProduct(productId);
-      if (!product) {
+        const product = await getProduct(productId);
+        if (!product) {
         setProductError('Product not found');
         return;
-      }
+        }
 
       // Update form values
       updateValue('name', product.name);
@@ -269,6 +270,9 @@ const EditProductNew = () => {
       setProductQuantity(product.quantity || 0);
       setBarcode(product.barcode || '');
       
+      // Save category id and set later when categories are loaded
+      setProductCategoryId(product.category ? product.category.id : null);
+      
       // Set package info
       if (product.packageInfo) {
         setPackageWidth(product.packageInfo.width || '');
@@ -278,14 +282,7 @@ const EditProductNew = () => {
         setPackageQuantity(product.packageInfo.quantityInPackage || '');
       }
       
-      // Set category
-      if (product.category) {
-        const category = findCategoryById(product.category.id);
-        setSelectedCategory(category);
-        updateValue('category', category);
-      }
-      
-      // Set dynamic fields
+      // Set dynamic fields immediately from product
       if (product.productAttributeValues && product.productAttributeValues.length > 0) {
         const fields = {};
         product.productAttributeValues.forEach(attr => {
@@ -314,20 +311,40 @@ const EditProductNew = () => {
         })));
       }
       
-      // Set image
+      // Handle image preview for both base64 string and byte array
       if (product.image) {
+        let dataUrl = null;
+        if (typeof product.image === 'string') {
+          if (product.image.startsWith('data:')) {
+            dataUrl = product.image;
+          } else if (product.image.startsWith('/9j/')) {
+            dataUrl = `data:image/jpeg;base64,${product.image}`;
+          }
+        } else if (Array.isArray(product.image)) {
+          try {
+            const base64 = btoa(String.fromCharCode(...new Uint8Array(product.image)));
+            dataUrl = `data:image/jpeg;base64,${base64}`;
+          } catch (_) {
+            dataUrl = null;
+          }
+        }
+        if (!dataUrl && product.imageUrl) {
+          // Fallback to imageUrl if provided by backend
+          dataUrl = API_URLS.IMAGES.BY_FILENAME(product.imageUrl);
+        }
+        if (dataUrl) {
+          setPreviewUrl(dataUrl);
+        }
         setOriginalImageBytes(product.image);
-        const imageUrl = `data:image/jpeg;base64,${btoa(String.fromCharCode(...new Uint8Array(product.image)))}`;
-        setPreviewUrl(imageUrl);
       }
-      
-    } catch (error) {
+        
+      } catch (error) {
       console.error('Error loading product:', error);
       setProductError('Failed to load product data');
-    } finally {
-      setIsLoadingProduct(false);
-    }
-  };
+      } finally {
+        setIsLoadingProduct(false);
+      }
+    };
 
   /**
    * Initialize component
@@ -337,22 +354,17 @@ const EditProductNew = () => {
   }, [productId]);
 
   /**
-   * Initialize dynamic fields when category changes
+   * Set selected category once categories are loaded
    */
   useEffect(() => {
-    if (selectedCategory) {
-      const initialFields = {};
-      selectedCategory.attributes.forEach(attr => {
-        if (attr.multiple) {
-          initialFields[attr.name] = [''];
-        } else {
-          initialFields[attr.name] = '';
-        }
-      });
-      setDynamicFields(initialFields);
-      updateValue('dynamicFields', initialFields);
+    if (productCategoryId && categories && categories.length > 0) {
+      const category = findCategoryById(productCategoryId);
+      if (category) {
+        setSelectedCategory(category);
+        updateValue('category', category);
+      }
     }
-  }, [selectedCategory, updateValue]);
+  }, [productCategoryId, categories, findCategoryById, updateValue]);
 
   /**
    * Update form values when state changes
@@ -432,16 +444,16 @@ const EditProductNew = () => {
         if (Array.isArray(value)) {
           return value.filter(v => v.trim()).map(val => ({
             id: attrId,
-            attribute: {
-              id: attribute.id,
-              name: attribute.name,
-              nameRus: attribute.nameRus,
-              type: attribute.type,
-              required: attribute.required,
-              multiple: attribute.multiple
-            },
-            value: val,
-            productId: parseInt(productId)
+              attribute: {
+                id: attribute.id,
+                name: attribute.name,
+                nameRus: attribute.nameRus,
+                type: attribute.type,
+                required: attribute.required,
+                multiple: attribute.multiple
+              },
+              value: val,
+              productId: parseInt(productId)
           }));
         } else {
           if (!value || !value.trim()) return null;
@@ -498,7 +510,7 @@ const EditProductNew = () => {
   };
 
   // Loading state
-  if (isLoadingProduct) {
+  if (isLoadingProduct || categoriesLoading) {
     return <LoadingSpinner message="Loading product..." />;
   }
 
@@ -580,15 +592,15 @@ const EditProductNew = () => {
               
               <div className="flex space-x-2">
                 <div className="flex-1">
-                  <InputField
-                    type="text"
-                    value={barcode}
-                    onChange={(e) => setBarcode(e.target.value)}
+              <InputField
+                type="text"
+                value={barcode}
+                onChange={(e) => setBarcode(e.target.value)}
                     placeholder="Наведите сканер в любое место и нажмите курок (поддерживаются любые символы)..."
-                    inputProps={{
-                      id: 'barcode-input-field',
-                      name: 'barcode'
-                    }}
+                inputProps={{
+                  id: 'barcode-input-field',
+                  name: 'barcode'
+                }}
                     onKeyDown={(e) => {
                       // Auto-submit on Enter key (common for barcode scanners)
                       if (e.key === 'Enter' && barcode.trim()) {
