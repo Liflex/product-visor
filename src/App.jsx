@@ -11,6 +11,7 @@ import ProductFormNew from './components/ProductFormNew';
 import EditProductNew from './components/EditProductNew';
 import ProductDetail from './components/ProductDetail';
 import MarketList from './components/MarketList';
+import OzonOrders from './components/OzonOrders';
 import ErrorMessage from './components/ui/error-message.jsx';
 import { API_URLS } from './config/api-config.js';
 
@@ -61,7 +62,8 @@ const Navigation = () => {
     { path: '/', label: 'Home', icon: '🏠' },
     { path: '/all-products', label: 'Products', icon: '📦' },
     { path: '/add-product', label: 'Add Product', icon: '➕' },
-    { path: '/markets', label: 'Markets', icon: '🏪' }
+    { path: '/markets', label: 'Markets', icon: '🏪' },
+    { path: '/ozon/orders', label: 'Ozon', icon: '🛒' }
   ];
 
   /**
@@ -187,6 +189,7 @@ const App = () => {
             <Route path="/edit-product/:productId" element={<EditProductNew />} />
             <Route path="/product/:productId" element={<ProductDetail />} />
             <Route path="/markets" element={<MarketList />} />
+            <Route path="/ozon/orders" element={<OzonOrders />} />
             
             {/* 404 Route */}
             <Route 
