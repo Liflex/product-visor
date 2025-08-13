@@ -1,9 +1,0 @@
-ru\dmitartur\ozon\config\FeignOzonConfig.class
-ru\dmitartur\ozon\dto\DateRangeDto.class
-ru\dmitartur\ozon\OzonServiceApplication.class
-ru\dmitartur\ozon\config\GrpcClientConfig.class
-ru\dmitartur\ozon\config\OzonProperties.class
-ru\dmitartur\ozon\service\OzonOrderSyncService.class
-ru\dmitartur\ozon\service\OzonService.class
-ru\dmitartur\ozon\integration\OzonSellerApi.class
-ru\dmitartur\ozon\controller\OzonController.class

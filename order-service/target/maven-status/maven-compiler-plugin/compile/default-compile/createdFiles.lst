@@ -1,7 +1,0 @@
-ru\dmitartur\order\entity\Order.class
-ru\dmitartur\order\grpc\OrderInternalGrpcServer.class
-ru\dmitartur\order\controller\OrderController.class
-ru\dmitartur\order\service\OrderService.class
-ru\dmitartur\order\entity\OrderItem.class
-ru\dmitartur\order\OrderServiceApplication.class
-ru\dmitartur\order\repository\OrderRepository.class
