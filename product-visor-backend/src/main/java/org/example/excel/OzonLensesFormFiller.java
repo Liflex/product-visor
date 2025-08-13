@@ -86,7 +86,23 @@ public class OzonLensesFormFiller {
         int colDioptries = -1;
         int colCurvature = -1;
         int colDiameterMm = -1;
+        int colNds = -1;
+        int colRasrochka = -1;
+        int colBonusForOtziv = -1;
+        int colType = -1;
+        int colHashtag = -1;
+        int colExpiredDateInDays = -1;
+        int colDaysForSwitch = -1;
+        int colSex = -1;
+        int colRezim = -1;
+        int colComplect = -1;
+        int colCountry = -1;
+        int colBrand = -1;
+        int colGuaruantie = -1;
+        int colVlaznost = -1;
+        int colAnnotation = -1;
         int colSizeCm = -1; // Размер упаковки (Длина х Ширина х Высота), см
+        int colModelName = -1; // Размер упаковки (Длина х Ширина х Высота), см
     }
 
     private ColumnMap buildColumnMap(Sheet sheet, int headerRowIdx) {
@@ -114,6 +130,22 @@ public class OzonLensesFormFiller {
                 case "Радиус кривизны" -> map.colCurvature = c;
                 case "Диаметр, мм" -> map.colDiameterMm = c;
                 case "Размер упаковки (Длина х Ширина х Высота), см" -> map.colSizeCm = c;
+                case "НДС, %*" -> map.colNds = c;
+                case "Рассрочка" -> map.colRasrochka = c;
+                case "Баллы за отзывы" -> map.colBonusForOtziv = c;
+                case "Тип*" -> map.colType = c;
+                case "#Хештеги" -> map.colHashtag = c;
+                case "Срок годности в днях" -> map.colExpiredDateInDays = c;
+                case "Дней до замены" -> map.colDaysForSwitch = c;
+                case "Пол" -> map.colSex = c;
+                case "Режим ношения" -> map.colRezim = c;
+                case "Комплектация" -> map.colComplect = c;
+                case "Страна-изготовитель" -> map.colCountry = c;
+                case "Бренд*" -> map.colBrand = c;
+                case "Гарантийный срок" -> map.colGuaruantie = c;
+                case "Влагосодержание, %" -> map.colVlaznost = c;
+                case "Аннотация" -> map.colAnnotation = c;
+                case "Название модели (для объединения в одну карточку)*" -> map.colModelName = c;
                 default -> {}
             }
         }
@@ -124,7 +156,7 @@ public class OzonLensesFormFiller {
         Row row = sheet.getRow(rowIdx);
         if (row == null) row = sheet.createRow(rowIdx);
         setStringCell(row, cols.colArticle, dto.getArticle());
-        setStringCell(row, cols.colName, dto.getProductName());
+        setStringCell(row, cols.colName, formatProductName(dto.getProductName(), formatDioptries(dto.getAttrDioptries())));
         setStringCell(row, cols.colPrice, dto.getPrice());
         setStringCell(row, cols.colBarcode, dto.getBarcode());
         setStringCell(row, cols.colQtyInPack, dto.getPackageQuantityInPack());
@@ -142,6 +174,27 @@ public class OzonLensesFormFiller {
         // Композитное поле: ДхШхВ, см
         String sizeCm = composeSizeCm(dto.getPackageLength(), dto.getPackageWidth(), dto.getPackageHeight());
         setStringCell(row, cols.colSizeCm, sizeCm);
+        //Иные автоматом
+        setStringCell(row, cols.colNds, "Не облагается");
+        setStringCell(row, cols.colRasrochka, "Да");
+        setStringCell(row, cols.colBonusForOtziv, "Да");
+        setStringCell(row, cols.colType, "Цветные контактные линзы");
+        setStringCell(row, cols.colHashtag, "#линзы #цветныелинзы #контактныелинзы #красота #косплей");
+        setStringCell(row, cols.colExpiredDateInDays, "1825");
+        setStringCell(row, cols.colDaysForSwitch, "12 месяцев");
+        setStringCell(row, cols.colSex, "Мужской;Женский;Мальчики;Девочки");
+        setStringCell(row, cols.colRezim, "Дневной");
+        setStringCell(row, cols.colComplect, "1 пара линз, кейс для хранения");
+        setStringCell(row, cols.colCountry, "Страна-изготовитель");
+        setStringCell(row, cols.colBrand, "Нет бренда");
+        setStringCell(row, cols.colGuaruantie, "0");
+        setStringCell(row, cols.colVlaznost, "38");
+        setStringCell(row, cols.colModelName, dto.getArticle());
+        setStringCell(row, cols.colAnnotation, "Цветные контактные линзы для глаз Lalens - это уникальный продукт, который поможет вам выделиться из толпы. \n" +
+                "\n" +
+                "Линзы Lalens  - это идеальный выбор для тех, кто хочет изменить свой образ и добавить яркости своим глазам. Они подходят как для мужчин, так и для женщин любого возраста и пола.\n" +
+                "\n" +
+                "Вы можете быть уверены, что покупая эти линзы, вы получаете только лучшее!");
     }
 
     private void setStringCell(Row row, int colIdx, String value) {
@@ -182,6 +235,14 @@ public class OzonLensesFormFiller {
     }
 
     private String n(String s) { return s == null ? "" : s; }
+
+    private String formatProductName(String productName, String formatedDioptries) {
+        String formatedDioptriesCorrectedForName = formatedDioptries == null || formatedDioptries.isBlank() || formatedDioptries.equals("0") ? "0.00" : formatedDioptries;
+
+        return "Цветные контактные линзы для глаз Lalens, " + productName +
+                ", 12 месяцев, "
+                + formatedDioptriesCorrectedForName;
+    }
 
     // Спец-формат для Оптической силы: 0 -> пусто, иначе 2 знака после точки с точкой
     private String formatDioptries(String input) {

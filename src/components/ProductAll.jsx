@@ -232,8 +232,8 @@ const ProductAll = () => {
     }
 
     if (showCreateForm) {
-        return (
-            <div className="container mx-auto px-4 py-8">
+  return (
+    <div className="container mx-auto px-4 py-8">
                 <div className="mb-6">
                     <button
                         onClick={() => setShowCreateForm(false)}
@@ -241,9 +241,9 @@ const ProductAll = () => {
                     >
                         ← Назад к списку
                     </button>
-                </div>
+      </div>
                 <ProductFormNew 
-                    categories={categories} 
+        categories={categories}
                     onProductCreated={handleProductCreated}
                 />
             </div>
@@ -290,12 +290,12 @@ const ProductAll = () => {
                     >
                         Выделить всё на странице
                     </button>
-                    <button
+                <button
                         onClick={clearSelection}
                         className="px-6 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600"
-                    >
+                >
                         Очистить выделение
-                    </button>
+                </button>
                     <button
                         onClick={downloadExcel}
                         className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
@@ -400,8 +400,8 @@ const ProductAll = () => {
             </div>
 
             <PaginationControls />
-        </div>
-    );
+    </div>
+  );
 };
 
 export default ProductAll;

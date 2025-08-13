@@ -15,8 +15,8 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-08-08T22:15:30+0300",
-    comments = "version: 1.6.2, compiler: Eclipse JDT (IDE) 3.42.50.v20250729-0351, environment: Java 21.0.7 (Azul Systems, Inc.)"
+    date = "2025-08-13T20:56:49+0300",
+    comments = "version: 1.6.2, compiler: javac, environment: Java 17.0.14 (Azul Systems, Inc.)"
 )
 @Component
 public class ProductMapperImpl implements ProductMapper {
@@ -36,21 +36,21 @@ public class ProductMapperImpl implements ProductMapper {
 
         ProductDto productDto = new ProductDto();
 
-        productDto.setArticle( product.getArticle() );
-        productDto.setBarcode( product.getBarcode() );
-        productDto.setCategory( categoryMapper.categoryToCategoryDto( product.getCategory() ) );
         productDto.setId( product.getId() );
+        productDto.setName( product.getName() );
+        productDto.setArticle( product.getArticle() );
+        productDto.setImageUrl( product.getImageUrl() );
         byte[] image = product.getImage();
         if ( image != null ) {
             productDto.setImage( Arrays.copyOf( image, image.length ) );
         }
-        productDto.setImageUrl( product.getImageUrl() );
-        productDto.setName( product.getName() );
-        productDto.setPackageInfo( product.getPackageInfo() );
+        productDto.setBarcode( product.getBarcode() );
+        productDto.setQuantity( product.getQuantity() );
+        productDto.setCategory( categoryMapper.categoryToCategoryDto( product.getCategory() ) );
         productDto.setPrice( product.getPrice() );
+        productDto.setPackageInfo( product.getPackageInfo() );
         productDto.setProductAttributeValues( productAttributeValueListToProductAttributeValueDtoList( product.getProductAttributeValues() ) );
         productDto.setProductMarkets( productMarketListToProductMarketDtoList( product.getProductMarkets() ) );
-        productDto.setQuantity( product.getQuantity() );
 
         return productDto;
     }
@@ -63,21 +63,21 @@ public class ProductMapperImpl implements ProductMapper {
 
         Product product = new Product();
 
-        product.setArticle( dto.getArticle() );
-        product.setBarcode( dto.getBarcode() );
-        product.setCategory( categoryMapper.categoryDtoToCategory( dto.getCategory() ) );
         product.setId( dto.getId() );
+        product.setName( dto.getName() );
+        product.setArticle( dto.getArticle() );
         byte[] image = dto.getImage();
         if ( image != null ) {
             product.setImage( Arrays.copyOf( image, image.length ) );
         }
         product.setImageUrl( dto.getImageUrl() );
-        product.setName( dto.getName() );
-        product.setPackageInfo( dto.getPackageInfo() );
+        product.setBarcode( dto.getBarcode() );
+        product.setQuantity( dto.getQuantity() );
+        product.setCategory( categoryMapper.categoryDtoToCategory( dto.getCategory() ) );
         product.setPrice( dto.getPrice() );
+        product.setPackageInfo( dto.getPackageInfo() );
         product.setProductAttributeValues( productAttributeValueDtoListToProductAttributeValueList( dto.getProductAttributeValues() ) );
         product.setProductMarkets( productMarketDtoListToProductMarketList( dto.getProductMarkets() ) );
-        product.setQuantity( dto.getQuantity() );
 
         enrichPickupProductMarketReverseUrls( product );
 

@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-08-08T22:15:31+0300",
-    comments = "version: 1.6.2, compiler: Eclipse JDT (IDE) 3.42.50.v20250729-0351, environment: Java 21.0.7 (Azul Systems, Inc.)"
+    date = "2025-08-13T20:56:49+0300",
+    comments = "version: 1.6.2, compiler: javac, environment: Java 17.0.14 (Azul Systems, Inc.)"
 )
 @Component
 public class ProductAttributeValueMapperImpl implements ProductAttributeValueMapper {
@@ -25,9 +25,9 @@ public class ProductAttributeValueMapperImpl implements ProductAttributeValueMap
         ProductAttributeValueDto productAttributeValueDto = new ProductAttributeValueDto();
 
         productAttributeValueDto.setProductId( attributeProductId( attribute ) );
-        productAttributeValueDto.setAttribute( attributeToAttributeDto( attribute.getAttribute() ) );
         productAttributeValueDto.setId( attribute.getId() );
         productAttributeValueDto.setValue( attribute.getValue() );
+        productAttributeValueDto.setAttribute( attributeToAttributeDto( attribute.getAttribute() ) );
 
         return productAttributeValueDto;
     }
@@ -41,9 +41,9 @@ public class ProductAttributeValueMapperImpl implements ProductAttributeValueMap
         ProductAttributeValue productAttributeValue = new ProductAttributeValue();
 
         productAttributeValue.setProduct( productAttributeValueDtoToProduct( attributeDto ) );
-        productAttributeValue.setAttribute( attributeDtoToAttribute( attributeDto.getAttribute() ) );
         productAttributeValue.setId( attributeDto.getId() );
         productAttributeValue.setValue( attributeDto.getValue() );
+        productAttributeValue.setAttribute( attributeDtoToAttribute( attributeDto.getAttribute() ) );
 
         return productAttributeValue;
     }
@@ -64,11 +64,11 @@ public class ProductAttributeValueMapperImpl implements ProductAttributeValueMap
         AttributeDto attributeDto = new AttributeDto();
 
         attributeDto.setId( attribute.getId() );
-        attributeDto.setMultiple( attribute.isMultiple() );
         attributeDto.setName( attribute.getName() );
         attributeDto.setNameRus( attribute.getNameRus() );
-        attributeDto.setRequired( attribute.isRequired() );
         attributeDto.setType( attribute.getType() );
+        attributeDto.setRequired( attribute.isRequired() );
+        attributeDto.setMultiple( attribute.isMultiple() );
 
         return attributeDto;
     }
@@ -93,11 +93,11 @@ public class ProductAttributeValueMapperImpl implements ProductAttributeValueMap
         Attribute attribute = new Attribute();
 
         attribute.setId( attributeDto.getId() );
-        attribute.setMultiple( attributeDto.isMultiple() );
         attribute.setName( attributeDto.getName() );
         attribute.setNameRus( attributeDto.getNameRus() );
-        attribute.setRequired( attributeDto.isRequired() );
         attribute.setType( attributeDto.getType() );
+        attribute.setRequired( attributeDto.isRequired() );
+        attribute.setMultiple( attributeDto.isMultiple() );
 
         return attribute;
     }

@@ -19,8 +19,8 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-08-08T22:15:31+0300",
-    comments = "version: 1.6.2, compiler: Eclipse JDT (IDE) 3.42.50.v20250729-0351, environment: Java 21.0.7 (Azul Systems, Inc.)"
+    date = "2025-08-13T20:56:49+0300",
+    comments = "version: 1.6.2, compiler: javac, environment: Java 17.0.14 (Azul Systems, Inc.)"
 )
 @Component
 public class ProductMarketMapperImpl implements ProductMarketMapper {
@@ -37,9 +37,9 @@ public class ProductMarketMapperImpl implements ProductMarketMapper {
         ProductMarketDto productMarketDto = new ProductMarketDto();
 
         productMarketDto.setId( entity.getId() );
-        productMarketDto.setMarket( marketMapper.toDto( entity.getMarket() ) );
-        productMarketDto.setPrice( entity.getPrice() );
         productMarketDto.setQuantity( entity.getQuantity() );
+        productMarketDto.setPrice( entity.getPrice() );
+        productMarketDto.setMarket( marketMapper.toDto( entity.getMarket() ) );
 
         return productMarketDto;
     }
@@ -53,10 +53,10 @@ public class ProductMarketMapperImpl implements ProductMarketMapper {
         ProductMarket productMarket = new ProductMarket();
 
         productMarket.setId( dto.getId() );
-        productMarket.setMarket( marketMapper.toEntity( dto.getMarket() ) );
-        productMarket.setPrice( dto.getPrice() );
         productMarket.setProduct( productDtoToProduct( dto.getProduct() ) );
+        productMarket.setMarket( marketMapper.toEntity( dto.getMarket() ) );
         productMarket.setQuantity( dto.getQuantity() );
+        productMarket.setPrice( dto.getPrice() );
 
         return productMarket;
     }
@@ -69,11 +69,11 @@ public class ProductMarketMapperImpl implements ProductMarketMapper {
         Attribute attribute = new Attribute();
 
         attribute.setId( attributeDto.getId() );
-        attribute.setMultiple( attributeDto.isMultiple() );
         attribute.setName( attributeDto.getName() );
         attribute.setNameRus( attributeDto.getNameRus() );
-        attribute.setRequired( attributeDto.isRequired() );
         attribute.setType( attributeDto.getType() );
+        attribute.setRequired( attributeDto.isRequired() );
+        attribute.setMultiple( attributeDto.isMultiple() );
 
         return attribute;
     }
@@ -98,9 +98,9 @@ public class ProductMarketMapperImpl implements ProductMarketMapper {
 
         Category category = new Category();
 
-        category.setAttributes( attributeDtoListToAttributeList( categoryDto.getAttributes() ) );
         category.setId( categoryDto.getId() );
         category.setName( categoryDto.getName() );
+        category.setAttributes( attributeDtoListToAttributeList( categoryDto.getAttributes() ) );
 
         return category;
     }
@@ -112,9 +112,9 @@ public class ProductMarketMapperImpl implements ProductMarketMapper {
 
         ProductAttributeValue productAttributeValue = new ProductAttributeValue();
 
-        productAttributeValue.setAttribute( attributeDtoToAttribute( productAttributeValueDto.getAttribute() ) );
         productAttributeValue.setId( productAttributeValueDto.getId() );
         productAttributeValue.setValue( productAttributeValueDto.getValue() );
+        productAttributeValue.setAttribute( attributeDtoToAttribute( productAttributeValueDto.getAttribute() ) );
 
         return productAttributeValue;
     }
@@ -152,21 +152,21 @@ public class ProductMarketMapperImpl implements ProductMarketMapper {
 
         Product product = new Product();
 
-        product.setArticle( productDto.getArticle() );
-        product.setBarcode( productDto.getBarcode() );
-        product.setCategory( categoryDtoToCategory( productDto.getCategory() ) );
         product.setId( productDto.getId() );
+        product.setName( productDto.getName() );
+        product.setArticle( productDto.getArticle() );
         byte[] image = productDto.getImage();
         if ( image != null ) {
             product.setImage( Arrays.copyOf( image, image.length ) );
         }
         product.setImageUrl( productDto.getImageUrl() );
-        product.setName( productDto.getName() );
-        product.setPackageInfo( productDto.getPackageInfo() );
+        product.setBarcode( productDto.getBarcode() );
+        product.setQuantity( productDto.getQuantity() );
+        product.setCategory( categoryDtoToCategory( productDto.getCategory() ) );
         product.setPrice( productDto.getPrice() );
+        product.setPackageInfo( productDto.getPackageInfo() );
         product.setProductAttributeValues( productAttributeValueDtoListToProductAttributeValueList( productDto.getProductAttributeValues() ) );
         product.setProductMarkets( productMarketDtoListToProductMarketList( productDto.getProductMarkets() ) );
-        product.setQuantity( productDto.getQuantity() );
 
         return product;
     }

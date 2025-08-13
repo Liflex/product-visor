@@ -10,10 +10,7 @@ import org.example.mapper.ProductMapper;
 import org.example.service.ProductService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -97,7 +94,7 @@ public class ProductController {
             @RequestParam(value = "size", required = false, defaultValue = "10") int size
     ) {
         logger.info("📋 Fetching products with pagination: page={}, size={}", page, size);
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").ascending());
         Page<Product> productPage = service.findAll(pageable);
         Page<ProductDto> dtos = productPage.map(mapper::toDto);
         return ResponseEntity.ok(dtos);
