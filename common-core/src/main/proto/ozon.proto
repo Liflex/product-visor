@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package productvisor.ozon.v1;
+
+option java_multiple_files = true;
+option java_package = "ru.dmitartur.common.grpc";
+option java_outer_classname = "OzonProto";
+
+message JsonRequest { string json = 1; }
+message JsonResponse { string json = 1; }
+
+

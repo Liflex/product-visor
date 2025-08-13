@@ -1,0 +1,75 @@
+version: "3.8"
+services:
+  zookeeper:
+    image: bitnami/zookeeper:3.9
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports: [ "2181:2181" ]
+  kafka:
+    image: bitnami/kafka:3.7
+    depends_on: [ zookeeper ]
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+    ports: [ "9092:9092" ]
+  postgres:
+    image: postgres:17
+    environment:
+      - POSTGRES_DB=product_visor
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports: [ "5433:5432" ]
+    volumes:
+      - pgdata17:/var/lib/postgresql/data
+  pgadmin:
+    image: dpage/pgadmin4:8
+    depends_on: [ postgres ]
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@local
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    ports: [ "5050:80" ]
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    depends_on: [ postgres ]
+    environment:
+      - DATA_SOURCE_NAME=postgresql://postgres:postgres@postgres:5432/product_visor?sslmode=disable
+    ports: [ "9187:9187" ]
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: [ "6379:6379" ]
+    volumes:
+      - redisdata:/data
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    depends_on: [ redis ]
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+    ports: [ "9121:9121" ]
+  prometheus:
+    image: prom/prometheus:latest
+    ports: [ "9090:9090" ]
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  grafana:
+    image: grafana/grafana:latest
+    ports: [ "3000:3000" ]
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana:/var/lib/grafana
+      - ./grafana/provisioning/datasources/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml:ro
+      - ./grafana/provisioning/dashboards/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+  tempo:
+    image: grafana/tempo:latest
+    ports: [ "4317:4317" ]
+volumes:
+  pgdata17:
+  grafana:
+  redisdata:
+
+

@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: ozon-service
+
+ozon:
+  base-url: ${OZON_BASE_URL:https://api-seller.ozon.ru}
+  client-id: ${OZON_CLIENT_ID:CHANGE_ME}
+  api-key: ${OZON_API_KEY:CHANGE_ME}
+
+server:
+  port: 9097
+
+ozon-sync:
+  enabled: true
+  window-minutes: 15
+  page-size: 100
+  fixed-delay-ms: 120000
+
+

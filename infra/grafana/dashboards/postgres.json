@@ -1,0 +1,57 @@
+{
+  "title": "PostgreSQL Overview",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Postgres UP",
+      "targets": [{"expr": "pg_up"}]
+    },
+    {
+      "type": "graph",
+      "title": "Active connections by DB",
+      "targets": [{"expr": "sum by (datname) (pg_stat_database_numbackends)"}]
+    },
+    {
+      "type": "graph",
+      "title": "Commits / Rollbacks (per sec)",
+      "targets": [
+        {"expr": "sum by (datname) (rate(pg_stat_database_xact_commit[5m]))"},
+        {"expr": "sum by (datname) (rate(pg_stat_database_xact_rollback[5m]))"}
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Tuples changed (ins/upd/del per sec)",
+      "targets": [
+        {"expr": "sum by (datname) (rate(pg_stat_database_tup_inserted[5m]))"},
+        {"expr": "sum by (datname) (rate(pg_stat_database_tup_updated[5m]))"},
+        {"expr": "sum by (datname) (rate(pg_stat_database_tup_deleted[5m]))"}
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Tuples read (returned/fetched per sec)",
+      "targets": [
+        {"expr": "sum by (datname) (rate(pg_stat_database_tup_returned[5m]))"},
+        {"expr": "sum by (datname) (rate(pg_stat_database_tup_fetched[5m]))"}
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Cache hit ratio (%)",
+      "targets": [
+        {"expr": "100 * (sum by (datname) (increase(pg_stat_database_blks_hit[5m])) / (sum by (datname) (increase(pg_stat_database_blks_hit[5m])) + sum by (datname) (increase(pg_stat_database_blks_read[5m]))))"}
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Blocks read/hit (per sec)",
+      "targets": [
+        {"expr": "sum by (datname) (rate(pg_stat_database_blks_read[5m]))"},
+        {"expr": "sum by (datname) (rate(pg_stat_database_blks_hit[5m]))"}
+      ]
+    }
+  ]
+}
+
+

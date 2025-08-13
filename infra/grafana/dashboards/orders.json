@@ -1,0 +1,27 @@
+{
+  "title": "Orders Overview",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Orders upserted (5m)",
+      "targets": [{"expr": "sum(rate(orders_upserted_total[5m]))"}]
+    },
+    {
+      "type": "graph",
+      "title": "Upserts by status",
+      "targets": [{"expr": "sum by (status) (rate(orders_upserted_total[5m]))"}]
+    },
+    {
+      "type": "stat",
+      "title": "Ozon backfill upserted (5m)",
+      "targets": [{"expr": "sum(rate(ozon_backfill_upserted_total[5m]))"}]
+    },
+    {
+      "type": "graph",
+      "title": "Backfill batches",
+      "targets": [{"expr": "sum by (result) (rate(ozon_backfill_batches_total[5m]))"}]
+    }
+  ]
+}
+
+
