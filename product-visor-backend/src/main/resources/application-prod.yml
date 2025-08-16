@@ -3,9 +3,9 @@ spring:
     resources:
       static-locations: F:\images
   datasource:
-    url: jdbc:postgresql://localhost:5432/postgres
-    username: admin
-    password: 1545
+    url: jdbc:postgresql://localhost:5433/product_visor
+    username: postgres
+    password: postgres
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:

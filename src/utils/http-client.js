@@ -7,7 +7,7 @@ import axios from 'axios';
 import { API_CONFIG } from '../config/api-config.js';
 
 /**
- * Create axios instance with default configuration
+ * Create axios instance with default configuration for product-visor-backend
  */
 const httpClient = axios.create({
   baseURL: `${API_CONFIG.BASE_URL}/api/${API_CONFIG.API_VERSION}`,
@@ -18,66 +18,81 @@ const httpClient = axios.create({
 });
 
 /**
+ * Create axios instance for microservices (order-service, ozon-service) without baseURL
+ * These services use Vite proxy, so we use relative URLs
+ */
+const microservicesHttpClient = axios.create({
+  timeout: API_CONFIG.TIMEOUT,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+/**
  * Request interceptor to add common headers or modify requests
  */
-httpClient.interceptors.request.use(
-  (config) => {
-    // Add timestamp to prevent caching
-    if (config.method === 'get') {
-      config.params = {
-        ...config.params,
-        _t: Date.now(),
-      };
-    }
-    
-    console.log(`Making ${config.method?.toUpperCase()} request to ${config.url}`);
-    return config;
-  },
-  (error) => {
-    console.error('Request error:', error);
-    return Promise.reject(error);
+const requestInterceptor = (config) => {
+  // Add timestamp to prevent caching
+  if (config.method === 'get') {
+    config.params = {
+      ...config.params,
+      _t: Date.now(),
+    };
   }
-);
+  
+  console.log(`Making ${config.method?.toUpperCase()} request to ${config.url}`);
+  return config;
+};
+
+const requestErrorInterceptor = (error) => {
+  console.error('Request error:', error);
+  return Promise.reject(error);
+};
+
+httpClient.interceptors.request.use(requestInterceptor, requestErrorInterceptor);
+microservicesHttpClient.interceptors.request.use(requestInterceptor, requestErrorInterceptor);
 
 /**
  * Response interceptor to handle common response patterns and errors
  */
-httpClient.interceptors.response.use(
-  (response) => {
-    console.log(`Response from ${response.config.url}:`, response.status);
-    return response;
-  },
-  (error) => {
-    console.error('Response error:', error);
+const responseInterceptor = (response) => {
+  console.log(`Response from ${response.config.url}:`, response.status);
+  return response;
+};
+
+const responseErrorInterceptor = (error) => {
+  console.error('Response error:', error);
+  
+  // Handle different types of errors
+  if (error.response) {
+    // Server responded with error status
+    const { status, data } = error.response;
     
-    // Handle different types of errors
-    if (error.response) {
-      // Server responded with error status
-      const { status, data } = error.response;
-      
-      switch (status) {
-        case 400:
-          throw new Error(`Bad Request: ${data?.message || 'Invalid request data'}`);
-        case 401:
-          throw new Error('Unauthorized: Please check your credentials');
-        case 403:
-          throw new Error('Forbidden: You do not have permission to perform this action');
-        case 404:
-          throw new Error('Not Found: The requested resource was not found');
-        case 500:
-          throw new Error('Server Error: Please try again later');
-        default:
-          throw new Error(`Server Error (${status}): ${data?.message || 'Unknown error'}`);
-      }
-    } else if (error.request) {
-      // Request was made but no response received
-      throw new Error('Network Error: Unable to connect to server. Please check your internet connection.');
-    } else {
-      // Something else happened
-      throw new Error(`Request Error: ${error.message}`);
+    switch (status) {
+      case 400:
+        throw new Error(`Bad Request: ${data?.message || 'Invalid request data'}`);
+      case 401:
+        throw new Error('Unauthorized: Please check your credentials');
+      case 403:
+        throw new Error('Forbidden: You do not have permission to perform this action');
+      case 404:
+        throw new Error('Not Found: The requested resource was not found');
+      case 500:
+        throw new Error('Server Error: Please try again later');
+      default:
+        throw new Error(`Server Error (${status}): ${data?.message || 'Unknown error'}`);
     }
+  } else if (error.request) {
+    // Request was made but no response received
+    throw new Error('Network Error: Unable to connect to server. Please check your internet connection.');
+  } else {
+    // Something else happened
+    throw new Error(`Request Error: ${error.message}`);
   }
-);
+};
+
+httpClient.interceptors.response.use(responseInterceptor, responseErrorInterceptor);
+microservicesHttpClient.interceptors.response.use(responseInterceptor, responseErrorInterceptor);
 
 /**
  * Helper function to create FormData for file uploads
@@ -127,4 +142,5 @@ export const uploadRequest = (url, formData, method = 'POST') => {
   });
 };
 
+export { microservicesHttpClient };
 export default httpClient; 

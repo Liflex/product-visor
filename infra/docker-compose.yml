@@ -13,7 +13,9 @@ services:
       - ALLOW_PLAINTEXT_LISTENER=yes
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT
       - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - KAFKA_CFG_DELETE_TOPIC_ENABLE=true
     ports: [ "9092:9092" ]
   postgres:
     image: postgres:17
@@ -24,13 +26,6 @@ services:
     ports: [ "5433:5432" ]
     volumes:
       - pgdata17:/var/lib/postgresql/data
-  pgadmin:
-    image: dpage/pgadmin4:8
-    depends_on: [ postgres ]
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@local
-      - PGADMIN_DEFAULT_PASSWORD=admin
-    ports: [ "5050:80" ]
   postgres-exporter:
     image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
     depends_on: [ postgres ]

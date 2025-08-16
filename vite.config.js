@@ -9,11 +9,11 @@ export default defineConfig({
     port: 5173, // Порт по умолчанию
     proxy: {
       '/api/ozon': {
-        target: 'http://localhost:9097',
+        target: 'http://192.168.1.59:9097',
         changeOrigin: true,
       },
       '/api/orders': {
-        target: 'http://localhost:9088',
+        target: 'http://192.168.1.59:9088',
         changeOrigin: true,
       }
     }

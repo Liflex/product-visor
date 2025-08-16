@@ -11,7 +11,9 @@ import ProductFormNew from './components/ProductFormNew';
 import EditProductNew from './components/EditProductNew';
 import ProductDetail from './components/ProductDetail';
 import MarketList from './components/MarketList';
+import Orders from './components/Orders';
 import OzonOrders from './components/OzonOrders';
+import OrderAnalysis from './components/OrderAnalysis';
 import ErrorMessage from './components/ui/error-message.jsx';
 import { API_URLS } from './config/api-config.js';
 
@@ -63,7 +65,9 @@ const Navigation = () => {
     { path: '/all-products', label: 'Products', icon: '📦' },
     { path: '/add-product', label: 'Add Product', icon: '➕' },
     { path: '/markets', label: 'Markets', icon: '🏪' },
-    { path: '/ozon/orders', label: 'Ozon', icon: '🛒' }
+    { path: '/orders', label: 'Orders', icon: '📋' },
+    { path: '/ozon/orders', label: 'Ozon', icon: '🛒' },
+    { path: '/order-analysis', label: 'Order Analysis', icon: '📊' }
   ];
 
   /**
@@ -158,15 +162,15 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <Layout>
-          <div className="max-w-2xl mx-auto p-4">
+        <div className="min-h-screen w-full bg-gray-900">
+          <div className="max-w-2xl mx-auto p-4 pt-20">
             <ErrorMessage
               message="Something went wrong. Please refresh the page and try again."
               onRetry={() => window.location.reload()}
               type="error"
             />
           </div>
-        </Layout>
+        </div>
       );
     }
 
@@ -189,7 +193,9 @@ const App = () => {
             <Route path="/edit-product/:productId" element={<EditProductNew />} />
             <Route path="/product/:productId" element={<ProductDetail />} />
             <Route path="/markets" element={<MarketList />} />
+            <Route path="/orders" element={<Orders />} />
             <Route path="/ozon/orders" element={<OzonOrders />} />
+        <Route path="/order-analysis" element={<OrderAnalysis />} />
             
             {/* 404 Route */}
             <Route 

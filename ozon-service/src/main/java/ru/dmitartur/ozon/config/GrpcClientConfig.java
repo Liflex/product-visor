@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class GrpcClientConfig {
 
-    @Value("${grpc.client.order-service.address:localhost:7068}")
+    @Value("${grpc.client.order-service.address:localhost:9099}")
     private String orderServiceAddress;
 
     @Bean

@@ -6,9 +6,9 @@ spring:
     resources:
       static-locations: F:\images
   datasource:
-    url: jdbc:postgresql://localhost:5432/postgres
-    username: admin
-    password: 1545
+    url: jdbc:postgresql://localhost:5433/product_visor
+    username: postgres
+    password: postgres
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -28,8 +28,35 @@ logging:
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
     org.hibernate.tool.hbm2ddl: DEBUG
+    ru.dmitartur.kafka: DEBUG
+    org.springframework.kafka: DEBUG
+    org.apache.kafka: INFO
+    ru.dmitartur.config.KafkaConfig: DEBUG
+    ru.dmitartur.grpc.ProductGrpcServer: DEBUG
+    net.devh.boot.grpc: DEBUG
+
+# Kafka конфигурация
+kafka:
+  enabled: true  # Включаем Kafka
+  bootstrap-servers: localhost:9092
+  topics:
+    order-events: order-events
+  consumer:
+    group-id: product-visor-group
+    auto-offset-reset: earliest
+    key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    # Настройки для работы с Kafka
+    properties:
+      isolation.level: read_committed
+
 server:
   port: 8085
+
+# gRPC конфигурация
+grpc:
+  server:
+    port: 9093
 
 file:
   upload-dir: F:\images

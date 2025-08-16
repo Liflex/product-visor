@@ -16,6 +16,14 @@
     </properties>
 
     <dependencies>
+        <!-- Lombok for annotations -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.30</version>
+            <scope>provided</scope>
+        </dependency>
+        
         <!-- Needed for gRPC stubs using javax.annotation.Generated on JDK 9+ -->
         <dependency>
             <groupId>javax.annotation</groupId>

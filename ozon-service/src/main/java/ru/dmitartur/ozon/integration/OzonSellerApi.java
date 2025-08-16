@@ -10,6 +10,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 public interface OzonSellerApi {
     @PostMapping("/v2/posting/fbo/list")
     JsonNode fboPostingList(@RequestBody JsonNode request);
+    
+    @PostMapping("/v3/posting/fbs/list")
+    JsonNode fbsPostingList(@RequestBody JsonNode request);
+    
+    @PostMapping("/v3/posting/fbs/get")
+    JsonNode fbsPostingGet(@RequestBody JsonNode request);
 }
 
 

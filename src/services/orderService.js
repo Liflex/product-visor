@@ -1,29 +1,59 @@
-import httpClient from '../utils/http-client.js';
-
-const API_BASE_URL = 'http://localhost:8085/api/orders';
+import { microservicesHttpClient } from '../utils/http-client.js';
+import { API_URLS } from '../config/api-config.js';
 
 export const orderService = {
     async createOrder(orderData) {
-        return httpClient.post(API_BASE_URL, orderData);
+        const response = await microservicesHttpClient.post(API_URLS.ORDERS.BASE(), orderData);
+        return response.data;
     },
 
-    async getAllOrders() {
-        return httpClient.get(API_BASE_URL);
+    async getAllOrders(page = 0, size = 20, status = null, dateFrom = null, dateTo = null) {
+        const baseUrl = API_URLS.ORDERS.BASE();
+        const params = new URLSearchParams({
+            page: page.toString(),
+            size: size.toString()
+        });
+        
+        if (status) params.append('status', status);
+        if (dateFrom) params.append('dateFrom', dateFrom);
+        if (dateTo) params.append('dateTo', dateTo);
+        
+        const url = `${baseUrl}?${params.toString()}`;
+        const response = await microservicesHttpClient.get(url);
+        return response.data;
+    },
+
+    async getOrdersByMarket(market, page = 0, size = 20, status = null, dateFrom = null, dateTo = null) {
+        const params = new URLSearchParams({
+            page: page.toString(),
+            size: size.toString()
+        });
+        
+        if (status) params.append('status', status);
+        if (dateFrom) params.append('dateFrom', dateFrom);
+        if (dateTo) params.append('dateTo', dateTo);
+        
+        const response = await microservicesHttpClient.get(`${API_URLS.ORDERS.BY_MARKET(market)}?${params.toString()}`);
+        return response.data;
     },
 
     async getOrderById(id) {
-        return httpClient.get(`${API_BASE_URL}/${id}`);
+        const response = await microservicesHttpClient.get(API_URLS.ORDERS.BY_ID(id));
+        return response.data;
     },
 
     async getOrdersByProductId(productId) {
-        return httpClient.get(`${API_BASE_URL}/product/${productId}`);
+        const response = await microservicesHttpClient.get(`${API_URLS.ORDERS.BASE()}/product/${productId}`);
+        return response.data;
     },
 
     async getOrdersByMarketId(marketId) {
-        return httpClient.get(`${API_BASE_URL}/market/${marketId}`);
+        const response = await microservicesHttpClient.get(API_URLS.ORDERS.BY_MARKET(marketId));
+        return response.data;
     },
 
     async getOrderByBarcode(orderBarcode) {
-        return httpClient.get(`${API_BASE_URL}/barcode/${orderBarcode}`);
+        const response = await microservicesHttpClient.get(`${API_URLS.ORDERS.BASE()}/barcode/${orderBarcode}`);
+        return response.data;
     }
 }; 

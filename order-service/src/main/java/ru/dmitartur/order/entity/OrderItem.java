@@ -11,7 +11,7 @@ import java.math.BigDecimal;
 @Setter
 @ToString
 @Entity
-@Table(name = "order_items")
+@Table(name = "order_items", schema = "orders")
 public class OrderItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,6 +24,9 @@ public class OrderItem {
 
     @Column(name = "product_id")
     private Long productId;
+
+    @Column(name = "sku")
+    private String sku;
 
     @Column(name = "offer_id")
     private String offerId;

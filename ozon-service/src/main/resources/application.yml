@@ -1,19 +1,60 @@
 spring:
   application:
     name: ozon-service
+  datasource:
+    url: jdbc:postgresql://localhost:5433/product_visor
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          time_zone: UTC
+        default_schema: ozon
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    validate-on-migrate: true
+    schemas: ozon
+    default-schema: ozon
 
 ozon:
   base-url: ${OZON_BASE_URL:https://api-seller.ozon.ru}
-  client-id: ${OZON_CLIENT_ID:CHANGE_ME}
-  api-key: ${OZON_API_KEY:CHANGE_ME}
+  client-id: ${OZON_CLIENT_ID:2960590}
+  api-key: ${OZON_API_KEY:026e58e9-1546-4dd2-b47c-b9f111c1f587}
 
 server:
   port: 9097
 
+# gRPC клиент конфигурация
+grpc:
+  client:
+    order-service:
+      address: localhost:9099
+
+# Конфигурация автоматической синхронизации
+app:
+  sync:
+    enabled: true
+    checkpoint-name: FBO_ORDERS
+    max-gap-hours: 1 # Максимальный разрыв в часах для автоматической синхронизации
+
+# Старая конфигурация для обратной совместимости
 ozon-sync:
   enabled: true
   window-minutes: 15
   page-size: 100
   fixed-delay-ms: 120000
+
+logging:
+  level:
+    ru.dmitartur.ozon.service.SyncService: INFO
+    ru.dmitartur.ozon.service.OzonOrderSyncService: DEBUG
 
 

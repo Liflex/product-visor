@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import ru.dmitartur.dto.ProductDto;
 import ru.dmitartur.dto.ProductUploadRequest;
+import ru.dmitartur.dto.StockUpdateDto;
 import ru.dmitartur.entity.Product;
 import ru.dmitartur.mapper.ProductMapper;
 import ru.dmitartur.service.ProductService;
@@ -18,6 +19,8 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+
+
 
 @RestController
 @RequestMapping("/api/v1/product")
@@ -105,8 +108,71 @@ public class ProductController {
 
         Optional<Product> product = service.findByBarcode(barcode);
 
-        logger.info("✅ Product found by barcode: {} -> Product ID: {}", barcode, product.get().getId());
-        return ResponseEntity.ok(mapper.toDto(product.get()));
+        if (product.isPresent()) {
+            logger.info("✅ Product found by barcode: {} -> Product ID: {}", barcode, product.get().getId());
+            return ResponseEntity.ok(mapper.toDto(product.get()));
+        } else {
+            logger.warn("❌ Product not found by barcode: {}", barcode);
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/sku/{sku}")
+    public ResponseEntity<ProductDto> findBySku(@PathVariable String sku) {
+        logger.info("🔍 Searching product by SKU/Article: {}", sku);
+
+        Optional<Product> product = service.findByArticle(sku);
+
+        if (product.isPresent()) {
+            logger.info("✅ Product found by SKU: {} -> Product ID: {}", sku, product.get().getId());
+            return ResponseEntity.ok(mapper.toDto(product.get()));
+        } else {
+            logger.warn("❌ Product not found by SKU: {}", sku);
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/article/{article}")
+    public ResponseEntity<ProductDto> findByArticle(@PathVariable String article) {
+        logger.info("🔍 Searching product by article: {}", article);
+        Optional<Product> product = service.findByArticle(article);
+        if (product.isPresent()) {
+            logger.info("✅ Product found by article: {} -> Product ID: {}", article, product.get().getId());
+            return ResponseEntity.ok(mapper.toDto(product.get()));
+        } else {
+            logger.warn("❌ Product not found by article: {}", article);
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PostMapping("/sku/{sku}/stock")
+    public ResponseEntity<Void> updateStock(@PathVariable String sku, @RequestBody StockUpdateDto request) {
+        logger.info("📦 Updating product stock: sku={}, change={}", sku, request.getQuantityChange());
+
+        boolean updated = service.updateQuantityByArticle(sku, request.getQuantityChange());
+        
+        if (updated) {
+            logger.info("✅ Product stock updated: sku={}", sku);
+            return ResponseEntity.ok().build();
+        } else {
+            logger.warn("❌ Product not found for stock update: sku={}", sku);
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PostMapping("/article/{article}/stock")
+    public ResponseEntity<Void> updateStockByArticle(@PathVariable String article, @RequestBody StockUpdateDto request) {
+        logger.info("📦 Updating product stock: article={}, change={}", article, request.getQuantityChange());
+
+        boolean updated = service.updateQuantityByArticle(article, request.getQuantityChange());
+        
+        if (updated) {
+            logger.info("✅ Product stock updated: article={}", article);
+            return ResponseEntity.ok().build();
+        } else {
+            logger.warn("❌ Product not found for stock update: article={}", article);
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @GetMapping("/search")
