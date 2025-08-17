@@ -1,4 +1,4 @@
-package ru.dmitartur.ozon.config;
+package ru.dmitartur.common.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,8 +10,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.util.Arrays;
 
+/**
+ * Общая конфигурация CORS для всех сервисов
+ */
 @Configuration
-public class CorsConfig implements WebMvcConfigurer {
+public class CorsCommonConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {

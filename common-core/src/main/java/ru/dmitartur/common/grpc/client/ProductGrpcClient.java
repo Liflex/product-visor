@@ -52,35 +52,6 @@ public class ProductGrpcClient {
     }
 
     /**
-     * Обновить остаток товара по артикулу через gRPC
-     */
-    public boolean updateProductStockByArticle(String article, int quantityChange) {
-        try {
-            log.debug("📦 gRPC: Updating product stock: article={}, change={}", article, quantityChange);
-            
-            UpdateStockRequest request = UpdateStockRequest.newBuilder()
-                    .setArticle(article)
-                    .setQuantityChange(quantityChange)
-                    .build();
-            
-            UpdateStockResponse response = productServiceStub.updateStockByArticle(request);
-            
-            if (response.getSuccess()) {
-                log.debug("✅ gRPC: Product stock updated successfully: article={}, change={}", article, quantityChange);
-                return true;
-            } else {
-                log.warn("⚠️ gRPC: Failed to update product stock: article={}, error={}", 
-                        article, response.getErrorMessage());
-                return false;
-            }
-            
-        } catch (Exception e) {
-            log.error("❌ gRPC: Error updating product stock for article {}: {}", article, e.getMessage());
-            return false;
-        }
-    }
-
-    /**
      * Конвертировать ProductInfoDto в ProductInfo
      */
     private ProductInfo convertToProductInfo(ProductInfoDto productDto) {

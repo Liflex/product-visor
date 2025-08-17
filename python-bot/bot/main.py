@@ -53,7 +53,7 @@ async def handle_start_command(message: types.Message) -> None:
             "username": message.from_user.username,
             "firstName": message.from_user.first_name,
             "lastName": message.from_user.last_name,
-            "eventTime": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+            "eventTime": datetime.now(timezone).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
         }
 
         # Send event to user.events topic

@@ -18,8 +18,6 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         hbm2ddl:
           auto: update
-        jdbc:
-          time_zone: UTC
 logging:
   level:
     org.hibernate.SQL: INFO

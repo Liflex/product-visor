@@ -10,8 +10,6 @@ import ru.dmitartur.order.entity.Order;
 import ru.dmitartur.order.entity.OrderItem;
 import ru.dmitartur.order.kafka.OrderEventProducer;
 
-import java.util.List;
-
 /**
  * Обработчик событий заказов для обновления остатков товаров
  * 
@@ -24,7 +22,7 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class StockUpdateEventListener {
+public class OrderEventListener {
     
     private final ProductGrpcClient productGrpcClient;
     private final OrderEventProducer orderEventProducer;
@@ -40,9 +38,6 @@ public class StockUpdateEventListener {
         log.info("📦 Processing stock update for created order: postingNumber={}", order.getPostingNumber());
         
         try {
-            // Обновляем остатки через gRPC
-            updateStockForOrder(order, false);
-            
             // Отправляем событие в Kafka
             sendKafkaEvent(order, "ORDER_CREATED");
             
@@ -65,9 +60,6 @@ public class StockUpdateEventListener {
         log.info("📦 Processing stock update for cancelled order: postingNumber={}", order.getPostingNumber());
         
         try {
-            // Возвращаем остатки через gRPC
-            updateStockForOrder(order, true);
-            
             // Отправляем событие в Kafka
             sendKafkaEvent(order, "ORDER_CANCELLED");
             
@@ -77,49 +69,6 @@ public class StockUpdateEventListener {
             log.error("❌ Error processing stock update for cancelled order: postingNumber={}, error={}", 
                     order.getPostingNumber(), e.getMessage());
         }
-    }
-    
-    /**
-     * Обновить остатки для заказа
-     * @param order заказ
-     * @param isCancellation true если это отмена заказа (возврат остатков), false если создание (уменьшение остатков)
-     */
-    private void updateStockForOrder(Order order, boolean isCancellation) {
-        List<OrderItem> itemsWithProducts = order.getItems().stream()
-            .filter(item -> item.getProductId() != null && item.getQuantity() != null && item.getOfferId() != null)
-            .toList();
-        
-        if (itemsWithProducts.isEmpty()) {
-            log.info("⏭️ No products found for stock update: postingNumber={}", order.getPostingNumber());
-            return;
-        }
-        
-        int updatedCount = 0;
-        for (OrderItem item : itemsWithProducts) {
-            try {
-                // Для отмены заказа возвращаем остатки (положительное значение)
-                // Для создания заказа уменьшаем остатки (отрицательное значение)
-                int quantityChange = isCancellation ? item.getQuantity() : -item.getQuantity();
-                
-                boolean success = productGrpcClient.updateProductStockByArticle(item.getOfferId(), quantityChange);
-                
-                if (success) {
-                    updatedCount++;
-                    log.debug("✅ Stock updated for product: offerId={}, change={}, isCancellation={}", 
-                            item.getOfferId(), quantityChange, isCancellation);
-                } else {
-                    log.warn("⚠️ Failed to update stock for product: offerId={}, change={}, isCancellation={}", 
-                            item.getOfferId(), quantityChange, isCancellation);
-                }
-                
-            } catch (Exception e) {
-                log.error("❌ Error updating stock for product: offerId={}, error={}", 
-                        item.getOfferId(), e.getMessage());
-            }
-        }
-        
-        log.info("📊 Stock update summary: postingNumber={}, totalItems={}, updatedItems={}, isCancellation={}", 
-                order.getPostingNumber(), itemsWithProducts.size(), updatedCount, isCancellation);
     }
     
     /**
@@ -149,7 +98,10 @@ public class StockUpdateEventListener {
             orderData.put("posting_number", order.getPostingNumber());
             orderData.put("source", order.getSource());
             orderData.put("status", order.getStatus().name());
-            
+            orderData.put("total_price", order.getTotalPrice());
+            orderData.put("ozon_created_date", order.getOzonCreatedAt().toString());
+            orderData.put("market", order.getMarket().name());
+
             com.fasterxml.jackson.databind.node.ArrayNode products = mapper.createArrayNode();
             for (OrderItem item : order.getItems()) {
                 if (item.getProductId() != null) { // Только найденные продукты

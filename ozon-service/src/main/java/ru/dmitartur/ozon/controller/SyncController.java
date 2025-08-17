@@ -1,25 +1,20 @@
 package ru.dmitartur.ozon.controller;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import ru.dmitartur.ozon.entity.SyncCheckpoint;
 import ru.dmitartur.ozon.scheduled.OzonBackfillScheduler;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-/**
- * Контроллер для управления синхронизацией с Ozon API
- */
-@Slf4j
 @RestController
-@RequestMapping("/api/sync")
+@RequestMapping("/api/v1/sync")
 @RequiredArgsConstructor
 public class SyncController {
 
@@ -36,13 +31,17 @@ public class SyncController {
         
         if (checkpoint.isPresent()) {
             SyncCheckpoint cp = checkpoint.get();
+            // Конвертируем время в московский timezone для отображения
+            OffsetDateTime lastSyncMoscow = cp.getLastSyncAt().atZoneSameInstant(ZoneId.of("Europe/Moscow")).toOffsetDateTime();
+            OffsetDateTime updatedAtMoscow = cp.getUpdatedAt().atZoneSameInstant(ZoneId.of("Europe/Moscow")).toOffsetDateTime();
+            
             response.put("checkpointName", cp.getCheckpointName());
-            response.put("lastSyncAt", cp.getLastSyncAt());
+            response.put("lastSyncAt", lastSyncMoscow); // В московском времени
             response.put("status", cp.getStatus());
             response.put("ordersProcessed", cp.getOrdersProcessed());
             response.put("syncDurationMs", cp.getSyncDurationMs());
             response.put("errorMessage", cp.getErrorMessage());
-            response.put("updatedAt", cp.getUpdatedAt());
+            response.put("updatedAt", updatedAtMoscow); // В московском времени
         } else {
             response.put("message", "No sync checkpoint found");
             response.put("status", "NOT_INITIALIZED");
@@ -56,19 +55,16 @@ public class SyncController {
      */
     @PostMapping("/force")
     public ResponseEntity<Map<String, Object>> forceSync() {
-        log.info("🔄 Force sync requested via API");
-        
         Map<String, Object> response = new HashMap<>();
         
         try {
             ozonBackfillScheduler.forceSync();
-            response.put("message", "Sync started successfully");
+            response.put("message", "Force sync started successfully");
             response.put("status", "STARTED");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            log.error("❌ Force sync failed: {}", e.getMessage(), e);
-            response.put("message", "Sync failed: " + e.getMessage());
-            response.put("status", "FAILED");
+            response.put("message", "Failed to start force sync: " + e.getMessage());
+            response.put("status", "ERROR");
             return ResponseEntity.internalServerError().body(response);
         }
     }

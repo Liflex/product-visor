@@ -33,6 +33,7 @@ services:
     image: tchiotludo/akhq:latest
     depends_on: [ kafka ]
     environment:
+      TZ: Europe/Moscow
       AKHQ_CONFIGURATION: |
         akhq:
           connections:
@@ -52,6 +53,8 @@ services:
   kafka-exporter:
     image: danielqsj/kafka-exporter:latest
     depends_on: [ kafka ]
+    environment:
+      TZ: Europe/Moscow
     command:
       - --kafka.server=kafka:29092
       - --web.listen-address=:9308
@@ -66,6 +69,8 @@ services:
     image: confluentinc/cp-kafka:7.5.1
     depends_on:
       - kafka
+    environment:
+      TZ: Europe/Moscow
     entrypoint: [ "/bin/sh","-c" ]
     command: >
       "
@@ -84,6 +89,8 @@ services:
       - POSTGRES_DB=product_visor
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
+      - TZ=Europe/Moscow
+      - PGTZ=Europe/Moscow
     ports: [ "5433:5432" ]
     volumes:
       - pgdata17:/var/lib/postgresql/data
@@ -92,9 +99,12 @@ services:
     depends_on: [ postgres ]
     environment:
       - DATA_SOURCE_NAME=postgresql://postgres:postgres@postgres:5432/product_visor?sslmode=disable
+      - TZ=Europe/Moscow
     ports: [ "9187:9187" ]
   redis:
     image: redis:7-alpine
+    environment:
+      TZ: Europe/Moscow
     command: ["redis-server", "--appendonly", "yes"]
     ports: [ "6379:6379" ]
     volumes:
@@ -104,9 +114,12 @@ services:
     depends_on: [ redis ]
     environment:
       - REDIS_ADDR=redis://redis:6379
+      - TZ=Europe/Moscow
     ports: [ "9121:9121" ]
   prometheus:
     image: prom/prometheus:latest
+    environment:
+      TZ: Europe/Moscow
     ports: [ "9090:9090" ]
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -115,6 +128,7 @@ services:
     ports: [ "3000:3000" ]
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      - TZ=Europe/Moscow
     volumes:
       - grafana:/var/lib/grafana
       - ./grafana/provisioning/datasources/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml:ro
@@ -122,6 +136,8 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
   tempo:
     image: grafana/tempo:latest
+    environment:
+      TZ: Europe/Moscow
     ports: [ "4317:4317" ]
   authorization-service:
     build:
@@ -137,6 +153,8 @@ services:
       - SPRING_DATA_REDIS_HOST=${SPRING_DATA_REDIS_HOST:-redis}
       - SPRING_DATA_REDIS_PORT=${SPRING_DATA_REDIS_PORT:-6379}
       - SPRING_DATA_REDIS_DATABASE=${SPRING_DATA_REDIS_DATABASE:-0}
+      - TZ=Europe/Moscow
+      - JAVA_OPTS=-Duser.timezone=Europe/Moscow
     ports: [ "9099:9099" ]
   product-visor-backend:
     build:
@@ -151,6 +169,8 @@ services:
       - SPRING_DATASOURCE_PASSWORD=${PRODUCT_DB_PASSWORD:-postgres}
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-kafka:29092}
       - FILE_UPLOAD_DIR=${FILE_UPLOAD_DIR:-/data/images}
+      - TZ=Europe/Moscow
+      - JAVA_OPTS=-Duser.timezone=Europe/Moscow
     volumes:
       - images:/data/images
     ports: [ "8085:8085", "9093:9093" ]
@@ -166,12 +186,13 @@ services:
       - SPRING_DATASOURCE_USERNAME=${ORDER_DB_USER:-postgres}
       - SPRING_DATASOURCE_PASSWORD=${ORDER_DB_PASSWORD:-postgres}
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-kafka:29092}
+      - TZ=Europe/Moscow
+      - JAVA_OPTS=-Duser.timezone=Europe/Moscow
     ports: [ "9088:9088", "9098:9098" ]
   client-service:
     build:
       context: ..
       dockerfile: client/Dockerfile
-    depends_on: [ authorization-service, postgres, kafka, product-visor-backend ]
     environment:
       - SPRING_PROFILES_ACTIVE=common,docker
       - JWK_SET_URI=${JWK_SET_URI:-http://authorization-service:9099/oauth2/jwks}
@@ -179,12 +200,14 @@ services:
       - SPRING_DATASOURCE_USERNAME=${CLIENT_DB_USER:-postgres}
       - SPRING_DATASOURCE_PASSWORD=${CLIENT_DB_PASSWORD:-postgres}
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-kafka:29092}
+      - TZ=Europe/Moscow
+      - JAVA_OPTS=-Duser.timezone=Europe/Moscow
     ports: [ "9089:9089", "9100:9100" ]
   ozon-service:
+    depends_on: [ authorization-service, postgres, kafka ]
     build:
       context: ..
       dockerfile: ozon-service/Dockerfile
-    depends_on: [ authorization-service, postgres, kafka, order-service, product-visor-backend ]
     environment:
       - SPRING_PROFILES_ACTIVE=common,docker
       - JWK_SET_URI=${JWK_SET_URI:-http://authorization-service:9099/oauth2/jwks}
@@ -195,6 +218,8 @@ services:
       - OZON_BASE_URL=${OZON_BASE_URL:-https://api-seller.ozon.ru}
       - OZON_CLIENT_ID=${OZON_CLIENT_ID:-2960590}
       - OZON_API_KEY=${OZON_API_KEY:-026e58e9-1546-4dd2-b47c-b9f111c1f587}
+      - TZ=Europe/Moscow
+      - JAVA_TOOL_OPTIONS=-Duser.timezone=Europe/Moscow
     ports: [ "9097:9097" ]
   python-bot:
     build:
@@ -209,6 +234,7 @@ services:
       - KAFKA_TOPIC_ORDER_EVENTS=${KAFKA_TOPIC_ORDER_EVENTS:-order-events}
       - KAFKA_CONSUMER_GROUP=${KAFKA_CONSUMER_GROUP:-python-bot}
       - METRICS_PORT=${PY_BOT_METRICS_PORT:-9101}
+      - TZ=Europe/Moscow
     ports: [ "9101:9101" ]
 volumes:
   pgdata17:
