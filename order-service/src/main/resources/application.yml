@@ -5,56 +5,33 @@ spring:
     url: jdbc:postgresql://localhost:5433/product_visor
     username: postgres
     password: postgres
-    driver-class-name: org.postgresql.Driver
   jpa:
-    hibernate:
-      ddl-auto: validate
     show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
     default-schema: orders
   flyway:
-    enabled: true
     locations: classpath:db/migration
-    baseline-on-migrate: true
-    validate-on-migrate: true
     schemas: orders
     default-schema: orders
+  profiles:
+    active: common
 
-# Kafka конфигурация
-kafka:
-  enabled: true  # Включаем Kafka для order-service
-  bootstrap-servers: localhost:9092
-  topics:
-    order-events: order-events
-  producer:
-    key-serializer: org.apache.kafka.common.serialization.StringSerializer
-    value-serializer: org.apache.kafka.common.serialization.StringSerializer
-    acks: all
-    retries: 3
-    # Настройки для работы с Kafka
-    properties:
-      isolation.level: read_committed
-      request.timeout.ms: 30000
-      delivery.timeout.ms: 60000
-      linger.ms: 100
-      batch.size: 16384
-      buffer.memory: 33554432
+# Специфичные для OrderService настройки (если нужны переопределения)
+# kafka:
+#   topics:
+#     order-events: order-service-events
 
 # gRPC конфигурация
 grpc:
   server:
-    port: 9099
+    port: 9098
+  client:
+    product-service:
+      address: localhost:9093
 
-# Логирование
+# Специфичные для OrderService настройки логирования
 logging:
   level:
     ru.dmitartur.order: DEBUG
-    org.springframework.kafka: DEBUG
-    org.apache.kafka: INFO
-    ru.dmitartur.order.config.KafkaConfig: DEBUG
     ru.dmitartur.order.service.ProductGrpcService: DEBUG
     net.devh.boot.grpc: DEBUG
 

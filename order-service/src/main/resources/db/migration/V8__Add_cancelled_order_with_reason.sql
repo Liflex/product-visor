@@ -61,3 +61,4 @@ INSERT INTO orders.orders (
     'DELIVERY_UNAVAILABLE'
 ) ON CONFLICT (posting_number) DO NOTHING;
 
+

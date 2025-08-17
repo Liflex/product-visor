@@ -1,0 +1,19 @@
+{
+  "eventType": "ORDER_CREATED",
+  "postingNumber": "TEST-001-2024-01-20",
+  "source": "OZON",
+  "eventTime": "2024-01-20T10:30:00Z",
+  "totalPrice": "1250.50",
+  "orderName": "Контактные линзы Acuvue Oasys 1-Day",
+  "items": [
+    {
+      "id": 1,
+      "product_id": 101,
+      "offer_id": "ACU001",
+      "name": "Контактные линзы Acuvue Oasys 1-Day",
+      "quantity": 2,
+      "price": "625.25",
+      "sku": "ACU001-30"
+    }
+  ]
+}

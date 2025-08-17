@@ -1,22 +1,83 @@
 version: "3.8"
 services:
+  # Zookeeper
   zookeeper:
-    image: bitnami/zookeeper:3.9
+    image: confluentinc/cp-zookeeper:7.5.1
     environment:
-      - ALLOW_ANONYMOUS_LOGIN=yes
-    ports: [ "2181:2181" ]
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    restart: unless-stopped
   kafka:
-    image: bitnami/kafka:3.7
+    image: confluentinc/cp-kafka:7.5.1
     depends_on: [ zookeeper ]
     environment:
-      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
-      - ALLOW_PLAINTEXT_LISTENER=yes
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
-      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
-      - KAFKA_CFG_DELETE_TOPIC_ENABLE=true
-    ports: [ "9092:9092" ]
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # Schema Registry settings
+      KAFKA_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+      KAFKA_DELETE_TOPIC_ENABLE: true
+    ports:
+        - "9092:9092"    # Для внутреннего доступа (контейнеры)
+        - "29092:29092"  # Для внешнего доступа (localhost)
+    restart: unless-stopped
+
+  # Kafka UI (AKHQ)
+  akhq:
+    image: tchiotludo/akhq:latest
+    depends_on: [ kafka ]
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            docker-kafka-server:
+              properties:
+                bootstrap.servers: "kafka:29092"
+              schema-registry:
+                url: "http://schema-registry:8081"
+              connect:
+                - name: "docker-connect"
+                  url: "http://kafka-connect:8083"
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  # Kafka Exporter для Prometheus
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:latest
+    depends_on: [ kafka ]
+    command:
+      - --kafka.server=kafka:29092
+      - --web.listen-address=:9308
+      - --web.telemetry-path=/metrics
+      - --log.level=info
+    ports:
+      - "9308:9308"
+    restart: unless-stopped
+
+  # Topic init (optional)
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.1
+    depends_on:
+      - kafka
+    entrypoint: [ "/bin/sh","-c" ]
+    command: >
+      "
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic telegram.incoming.messages --partitions 3 --replication-factor 1 &&
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic telegram.outgoing.messages --partitions 3 --replication-factor 1 &&
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic user.events --partitions 3 --replication-factor 1 &&
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic order-events --partitions 3 --replication-factor 1 &&
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic product-events --partitions 3 --replication-factor 1 &&
+      "
+    restart: "no"
+    labels:
+      org.label-schema.group: "monitoring"
   postgres:
     image: postgres:17
     environment:
@@ -62,9 +123,97 @@ services:
   tempo:
     image: grafana/tempo:latest
     ports: [ "4317:4317" ]
+  authorization-service:
+    build:
+      context: ..
+      dockerfile: authorization-service/Dockerfile
+    depends_on: [ postgres, redis, kafka ]
+    environment:
+      - SPRING_PROFILES_ACTIVE=common,docker
+      - DB_URL=${DB_URL:-jdbc:postgresql://postgres:5432/product_visor}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - JWK_SET_URI=${JWK_SET_URI:-http://authorization-service:9099/oauth2/jwks}
+      - SPRING_DATA_REDIS_HOST=${SPRING_DATA_REDIS_HOST:-redis}
+      - SPRING_DATA_REDIS_PORT=${SPRING_DATA_REDIS_PORT:-6379}
+      - SPRING_DATA_REDIS_DATABASE=${SPRING_DATA_REDIS_DATABASE:-0}
+    ports: [ "9099:9099" ]
+  product-visor-backend:
+    build:
+      context: ..
+      dockerfile: product-visor-backend/Dockerfile
+    depends_on: [ authorization-service, postgres, kafka ]
+    environment:
+      - SPRING_PROFILES_ACTIVE=common,docker
+      - JWK_SET_URI=${JWK_SET_URI:-http://authorization-service:9099/oauth2/jwks}
+      - SPRING_DATASOURCE_URL=${PRODUCT_DB_URL:-jdbc:postgresql://postgres:5432/product_visor}
+      - SPRING_DATASOURCE_USERNAME=${PRODUCT_DB_USER:-postgres}
+      - SPRING_DATASOURCE_PASSWORD=${PRODUCT_DB_PASSWORD:-postgres}
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-kafka:29092}
+      - FILE_UPLOAD_DIR=${FILE_UPLOAD_DIR:-/data/images}
+    volumes:
+      - images:/data/images
+    ports: [ "8085:8085", "9093:9093" ]
+  order-service:
+    build:
+      context: ..
+      dockerfile: order-service/Dockerfile
+    depends_on: [ authorization-service, postgres, kafka, product-visor-backend ]
+    environment:
+      - SPRING_PROFILES_ACTIVE=common,docker
+      - JWK_SET_URI=${JWK_SET_URI:-http://authorization-service:9099/oauth2/jwks}
+      - SPRING_DATASOURCE_URL=${ORDER_DB_URL:-jdbc:postgresql://postgres:5432/product_visor}
+      - SPRING_DATASOURCE_USERNAME=${ORDER_DB_USER:-postgres}
+      - SPRING_DATASOURCE_PASSWORD=${ORDER_DB_PASSWORD:-postgres}
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-kafka:29092}
+    ports: [ "9088:9088", "9098:9098" ]
+  client-service:
+    build:
+      context: ..
+      dockerfile: client/Dockerfile
+    depends_on: [ authorization-service, postgres, kafka, product-visor-backend ]
+    environment:
+      - SPRING_PROFILES_ACTIVE=common,docker
+      - JWK_SET_URI=${JWK_SET_URI:-http://authorization-service:9099/oauth2/jwks}
+      - SPRING_DATASOURCE_URL=${CLIENT_DB_URL:-jdbc:postgresql://postgres:5432/product_visor}
+      - SPRING_DATASOURCE_USERNAME=${CLIENT_DB_USER:-postgres}
+      - SPRING_DATASOURCE_PASSWORD=${CLIENT_DB_PASSWORD:-postgres}
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-kafka:29092}
+    ports: [ "9089:9089", "9100:9100" ]
+  ozon-service:
+    build:
+      context: ..
+      dockerfile: ozon-service/Dockerfile
+    depends_on: [ authorization-service, postgres, kafka, order-service, product-visor-backend ]
+    environment:
+      - SPRING_PROFILES_ACTIVE=common,docker
+      - JWK_SET_URI=${JWK_SET_URI:-http://authorization-service:9099/oauth2/jwks}
+      - SPRING_DATASOURCE_URL=${OZON_DB_URL:-jdbc:postgresql://postgres:5432/product_visor}
+      - SPRING_DATASOURCE_USERNAME=${OZON_DB_USER:-postgres}
+      - SPRING_DATASOURCE_PASSWORD=${OZON_DB_PASSWORD:-postgres}
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-kafka:29092}
+      - OZON_BASE_URL=${OZON_BASE_URL:-https://api-seller.ozon.ru}
+      - OZON_CLIENT_ID=${OZON_CLIENT_ID:-2960590}
+      - OZON_API_KEY=${OZON_API_KEY:-026e58e9-1546-4dd2-b47c-b9f111c1f587}
+    ports: [ "9097:9097" ]
+  python-bot:
+    build:
+      context: ../python-bot
+      dockerfile: Dockerfile
+    depends_on: [ kafka ]
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN:-933014109:AAE9NWeYhsmKlh_sjO6Gm4aeKP2lTJzQ4Go}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - KAFKA_TOPIC_OUTGOING=${KAFKA_TOPIC_OUTGOING:-telegram.outgoing.messages}
+      - KAFKA_TOPIC_USER_EVENTS=${KAFKA_TOPIC_USER_EVENTS:-user.events}
+      - KAFKA_TOPIC_ORDER_EVENTS=${KAFKA_TOPIC_ORDER_EVENTS:-order-events}
+      - KAFKA_CONSUMER_GROUP=${KAFKA_CONSUMER_GROUP:-python-bot}
+      - METRICS_PORT=${PY_BOT_METRICS_PORT:-9101}
+    ports: [ "9101:9101" ]
 volumes:
   pgdata17:
   grafana:
   redisdata:
+  images:
 
 

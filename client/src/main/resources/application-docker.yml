@@ -1,0 +1,26 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/product_visor
+    username: postgres
+    password: postgres
+  kafka:
+    bootstrap-servers: kafka:9092
+
+grpc:
+  server:
+    port: 9100
+  client:
+    product-service:
+      address: product-visor-backend:9093
+
+app:
+  product-service:
+    url: http://product-visor-backend:8085
+
+server:
+  port: 9089
+
+oauth2:
+  client:
+    token-uri: http://authorization-service:9099/oauth2/token
+

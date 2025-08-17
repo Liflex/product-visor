@@ -1,4 +1,7 @@
 spring:
+  config:
+    import:
+      - classpath:application-common.yml
   application:
     name: ozon-service
   datasource:
@@ -36,14 +39,16 @@ server:
 grpc:
   client:
     order-service:
-      address: localhost:9099
+      address: localhost:9098
+    product-service:
+      address: localhost:9093
 
 # Конфигурация автоматической синхронизации
 app:
   sync:
     enabled: true
     checkpoint-name: FBO_ORDERS
-    max-gap-hours: 1 # Максимальный разрыв в часах для автоматической синхронизации
+    max-gap-minutes: 15 # Максимальный разрыв в минутах для автоматической синхронизации
 
 # Старая конфигурация для обратной совместимости
 ozon-sync:
@@ -56,5 +61,7 @@ logging:
   level:
     ru.dmitartur.ozon.service.SyncService: INFO
     ru.dmitartur.ozon.service.OzonOrderSyncService: DEBUG
+
+# Настройки безопасности наследуются из application-common.yml
 
 

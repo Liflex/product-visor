@@ -58,11 +58,35 @@ public class OrderEventProducer {
             event.put("eventTime", OffsetDateTime.now().toString());
             event.set("items", orderData.path("products"));
             
+            // Добавляем общую стоимость заказа
+            JsonNode products = orderData.path("products");
+            if (products.isArray() && products.size() > 0) {
+                double totalPrice = 0.0;
+                for (JsonNode product : products) {
+                    String priceStr = product.path("price").asText("0");
+                    int quantity = product.path("quantity").asInt(1);
+                    try {
+                        totalPrice += Double.parseDouble(priceStr) * quantity;
+                    } catch (NumberFormatException e) {
+                        log.warn("⚠️ Invalid price format in product: {}", priceStr);
+                    }
+                }
+                event.put("totalPrice", String.format("%.2f", totalPrice));
+            }
+            
+            // Добавляем название первого товара как название заказа
+            if (products.isArray() && products.size() > 0) {
+                String firstProductName = products.get(0).path("name").asText("");
+                if (!firstProductName.isEmpty()) {
+                    event.put("orderName", firstProductName);
+                }
+            }
+            
             String message = objectMapper.writeValueAsString(event);
             String key = orderData.path("posting_number").asText();
             
-            log.info("📤 Sending {} event to Kafka: postingNumber={}, items={}", 
-                    eventType, key, orderData.path("products").size());
+            log.info("📤 Sending {} event to Kafka: postingNumber={}, items={}, totalPrice={}", 
+                    eventType, key, products.size(), event.path("totalPrice").asText("N/A"));
             
             CompletableFuture<SendResult<String, String>> future = kafkaTemplate.send(orderEventsTopic, key, message);
             

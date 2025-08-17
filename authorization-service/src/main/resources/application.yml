@@ -1,0 +1,117 @@
+spring:
+  application:
+    name: authorization-service
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/product_visor}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    dbcp2:
+      default-schema: authorization
+    hikari:
+      schema: authorization
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    validate-on-migrate: true
+    default-schema: authorization
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+
+server:
+  port: 9099
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+auth:
+  redis-authorization:
+    enabled: false  # при true включается кэш авторизаций в redis (поверх БД)
+    access-ttl-seconds: 3600
+    refresh-ttl-seconds: 2592000
+    id-ttl-seconds: 3600
+
+# RSA ключи
+rsa:
+  private-key: |
+    -----BEGIN PRIVATE KEY-----
+    MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDVWQnW9I4msQLm
+    fJ33D+DLmCHoReSM2zQgDLPjqbYNzHIeWYN0duThezCWx6isq6OmcpDp8Mbbm8Of
+    QEPuIm+t8Q8GI9o8RC6l9C7zY9wCvPI8B7aWlL2rE7S4D/2YDKf62/J+ayBf2YlS
+    r2j3Q8d/HAL1YXSPYS7zmwdWYYWS2cZdf5i9MWJ4qOURjeFwVFczjsksOaKRFp7r
+    HgywsQtXmXobKps1LJI85/sFtG6GfNNLK2W6t9/vaYF5roqj0GRJshU+a+uGsvbX
+    TNMkAVWaNGKvat5op4E8Xb+6/uQEWQd4pfUvEbRP+B1RC54h5HzKN6++fE1GHOwB
+    311b5UYBAgMBAAECggEABk07pA9T2ALy7W1DGouIaII1Mb4OwtJXmrK+PmcJjrLI
+    W0A/ZRl9C3Iu9XNn2gx8RME8N+IWVn3Q5S8Ui3jOszojWQX4TVto4OIA4CHF22wu
+    NUkNCg7uqmFmaAT2Op9KaZQMP5nnVq1xJEb7cSzzH8qydzrKW7R+DInI17LIZFzf
+    p84V+ckjwY/8yg/iM0G94TFhryYUB+O1f3+aOCU5T7WjB5+o1S+KLuzxmXGKHRC8
+    d7Z24O+YdsTWOx7+rGUFYSh88uFWvBRfFrEb9lwegeqR+NAidbO7jDsMTIy9sQA2
+    Xlx3VK3FknADsT1wRirfhZuDazp2Y3FyiQqMJ4Je2QKBgQD2rK03UxH6YUQyZalb
+    XC2JmhId1B1H2hzwMaJa04NV9mQdYt88T2bxFQ9aHM3/8vO7KvjYkMA+1uJXhaFk
+    D/7gnBGmBZGiysmczK5HL4jKvXS+kX4R1+aX4vDaNHAQiUP4m58zjcikeN1mS662
+    gKiLNTVkzgzFEu2vz37qUNmbWwKBgQDdadMscdnnzriVe4TcLpvLPhHu5Wkx/LBh
+    oHImzaWnj7jVx3wuy4It1Xgbd0CnPqrzzSuYrNusIH8Yy9VPoA4N7PnCnvfAp96W
+    jtb5O0GPYiVPNT69vvwrRZGAv4WB7vjtyN+QXvymIgK3j3SCSvmn3zHTFaCaI6Fp
+    LyXWmkXO0wKBgQCvIV+FVOwBqIbjhPvdSi9mb0WHee4j8j3zZjnPZDXtlRX1Kxo0
+    1mbOqNYSczrqCdJzQwoTr4ld0/A0lUJFKXoae5OoHHIOcwz6zvK4xY3H6wR0vBUW
+    lAM6OLwpH2ukwd/JJKu9zV7zLoB5vSfYmLWQyAEVhZjZXhv0Y0vHDgnA2wKBgEEW
+    1Q+hwI9WxAidsScRRJdw/dCe/FfHkwqAIk6p8eLaa1ndNPKEvRZARPi+C/GeiJ73
+    V7OgTUvCmdpuQZ0QzlDls161YNvv/Y2BHE1UUCeYkKNCYdliBbuqzeVtaBAUcnVk
+    seQ9KESmhunzcCrFY7Mn9/u3xejKRK8pPxRhcdglAoGAcwDzh4P8+TjhdGPAldI7
+    tocbjctdyIJHopmE14FfOu/gAL179K7xwVsLcTcZylorJekFdozC8ZYXQ3DpkUr1
+    xSciUwx0BcCZY5KFx7gJQgepU0L8hdjdAB3kmqjbNZP1dI061NRE83ab3ltAU7Hi
+    aBtZVwxD3ly4dDlq+Y0vtfg=
+    -----END PRIVATE KEY-----
+  public-key: |
+    -----BEGIN PUBLIC KEY-----
+    MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1VkJ1vSOJrEC5nyd9w/g
+    y5gh6EXkjNs0IAyz46m2DcxyHlmDdHbk4XswlseorKujpnKQ6fDG25vDn0BD7iJv
+    rfEPBiPaPEQupfQu82PcArzyPAe2lpS9qxO0uA/9mAyn+tvyfmsgX9mJUq9o90PH
+    fxwC9WF0j2Eu85sHVmGFktnGXX+YvTFieKjlEY3hcFRXM47JLDmikRae6x4MsLEL
+    V5l6GyqbNSySPOf7BbRuhnzTSytlurff72mBea6Ko9BkSbIVPmvrhrL210zTJAFV
+    mjRir2reaKeBPF2/uv7kBFkHeKX1LxG0T/gdUQueIeR8yjevvnxNRhzsAd9dW+VG
+    AQIDAQAB
+    -----END PUBLIC KEY-----
+
+# OAuth2 конфигурация для клиентов
+oauth2:
+  client:
+    id: oficiant-client
+    secret: oficiant-secret-90489bc550923ed2
+    scope: internal
+  user:
+    default-password: password
+
+# Логирование
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.security.oauth2: DEBUG
+    ru.dmitartur.oficiant.autorization: DEBUG
+    org.springframework.data.redis: DEBUG
+    org.springframework.web: DEBUG
+#  pattern:
+#    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+

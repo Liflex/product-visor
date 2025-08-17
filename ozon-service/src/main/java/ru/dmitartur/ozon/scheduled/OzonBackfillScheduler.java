@@ -26,8 +26,8 @@ public class OzonBackfillScheduler {
     @Value("${app.sync.checkpoint-name:FBO_ORDERS}")
     private String checkpointName;
     
-    @Value("${app.sync.max-gap-hours:1}")
-    private int maxGapHours; // Максимальный разрыв в часах для автоматической синхронизации
+    @Value("${app.sync.max-gap-minutes:1}")
+    private int maxGapMinutes; // Максимальный разрыв в минутах для автоматической синхронизации
     
     @Value("${app.sync.enabled:true}")
     private boolean syncEnabled;
@@ -58,7 +58,7 @@ public class OzonBackfillScheduler {
                 SyncCheckpoint cp = checkpoint.get();
                 Duration gap = Duration.between(cp.getLastSyncAt(), OffsetDateTime.now());
                 
-                if (gap.toHours() > maxGapHours) {
+                if (gap.toHours() > maxGapMinutes) {
                     log.warn("⚠️ Large sync gap detected: {} hours, performing catch-up sync", gap.toHours());
                     ozonBackfillScheduler.performCatchUpSync(cp);
                 } else {
@@ -73,7 +73,7 @@ public class OzonBackfillScheduler {
     /**
      * Периодическая проверка синхронизации (каждый час)
      */
-    @Scheduled(fixedRate = 3600000) // Каждый час
+    @Scheduled(fixedRate = 900000) // Каждые 15 минут
     public void periodicSyncCheck() {
         if (!syncEnabled) {
             return;
@@ -88,7 +88,7 @@ public class OzonBackfillScheduler {
                 SyncCheckpoint cp = checkpoint.get();
                 Duration gap = Duration.between(cp.getLastSyncAt(), OffsetDateTime.now());
                 
-                if (gap.toHours() > maxGapHours) {
+                if (gap.toMinutes() > maxGapMinutes) {
                     log.info("🔄 Periodic sync triggered, gap: {} hours", gap.toHours());
                     performCatchUpSync(cp);
                 }
@@ -196,6 +196,7 @@ public class OzonBackfillScheduler {
         performInitialSync();
     }
 }
+
 
 
 

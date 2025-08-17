@@ -8,8 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
 import org.springframework.stereotype.Component;
 import ru.dmitartur.common.grpc.*;
+import ru.dmitartur.common.grpc.client.ProductGrpcClient;
 import ru.dmitartur.order.service.OrderService;
-import ru.dmitartur.order.service.product.ProductService;
 
 @Slf4j
 @Component
@@ -18,22 +18,10 @@ import ru.dmitartur.order.service.product.ProductService;
 public class OrderInternalGrpcServer extends OrderInternalServiceGrpc.OrderInternalServiceImplBase {
 
     private final OrderService orderService;
-    private final ProductService productService;
+    private final ProductGrpcClient productGrpcClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Override
-    public void upsertOrders(JsonRequest request, StreamObserver<JsonResponse> responseObserver) {
-        try {
-            JsonNode payload = objectMapper.readTree(request.getJson());
-            int upserted = orderService.upsertBatch(payload);
-            var resp = objectMapper.createObjectNode().put("upserted", upserted);
-            responseObserver.onNext(JsonResponse.newBuilder().setJson(resp.toString()).build());
-        } catch (Exception e) {
-            var resp = objectMapper.createObjectNode().put("error", e.getMessage());
-            responseObserver.onNext(JsonResponse.newBuilder().setJson(resp.toString()).build());
-        }
-        responseObserver.onCompleted();
-    }
+
 
     @Override
     public void upsertOrdersDto(UpsertOrdersRequest request, StreamObserver<UpsertOrdersResponse> responseObserver) {
@@ -53,7 +41,7 @@ public class OrderInternalGrpcServer extends OrderInternalServiceGrpc.OrderInter
                     for (var item : order.getItems()) {
                         if (item.getOfferId() != null && !item.getOfferId().isEmpty()) {
                             try {
-                                var productInfo = productService.findProductByArticle(item.getOfferId());
+                                var productInfo = productGrpcClient.findProductByArticle(item.getOfferId());
                                 if (productInfo.isPresent()) {
                                     item.setProductId(productInfo.get().getId());
                                     log.debug("✅ Found product by OFFER_ID: OFFER_ID={}, productId={}",

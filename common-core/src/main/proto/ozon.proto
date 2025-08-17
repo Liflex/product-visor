@@ -6,7 +6,25 @@ option java_multiple_files = true;
 option java_package = "ru.dmitartur.common.grpc";
 option java_outer_classname = "OzonProto";
 
-message JsonRequest { string json = 1; }
-message JsonResponse { string json = 1; }
+// Сообщения для JSON запросов/ответов
+message JsonRequest { 
+    string json = 1; 
+}
+
+message JsonResponse { 
+    string json = 1; 
+}
+
+// Сервис для работы с Ozon API
+service OzonInternalService {
+    // Получить заказы из Ozon
+    rpc GetOrders(JsonRequest) returns (JsonResponse);
+    
+    // Обновить статус заказа в Ozon
+    rpc UpdateOrderStatus(JsonRequest) returns (JsonResponse);
+    
+    // Получить информацию о товарах из Ozon
+    rpc GetProducts(JsonRequest) returns (JsonResponse);
+}
 
 

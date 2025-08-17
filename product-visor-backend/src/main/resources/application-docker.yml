@@ -1,0 +1,25 @@
+spring:
+  web:
+    resources:
+      static-locations: /data/images
+  datasource:
+    url: jdbc:postgresql://postgres:5432/product_visor
+    username: postgres
+    password: postgres
+  kafka:
+    bootstrap-servers: kafka:9092
+
+file:
+  upload-dir: /data/images
+
+grpc:
+  server:
+    port: 9093
+
+server:
+  port: 8085
+
+oauth2:
+  client:
+    token-uri: http://authorization-service:9099/oauth2/token
+

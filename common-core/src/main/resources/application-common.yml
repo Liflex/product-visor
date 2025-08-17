@@ -1,0 +1,67 @@
+# Общие настройки Kafka
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    validate-on-migrate: true
+
+# Общие настройки OAuth2
+oauth2:
+  client:
+    token-uri: http://localhost:9099/oauth2/token
+    client-id: oficiant-client
+    client-secret: oficiant-secret-90489bc550923ed2
+    scope: internal
+
+# Общие настройки безопасности
+security:
+  oauth2:
+    resourceserver:
+      jwt:
+        jwk-set-uri: ${JWK_SET_URI:http://localhost:9099/oauth2/jwks}
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
+      properties:
+        isolation.level: read_committed
+        request.timeout.ms: 30000
+        delivery.timeout.ms: 60000
+        linger.ms: 100
+        batch.size: 16384
+        buffer.memory: 33554432
+
+# Дополнительные настройки Kafka для сервисов
+kafka:
+  enabled: true
+  topics:
+    order-events: order-events
+  consumer:
+    group-id: product-visor-group
+
+# Общие настройки мониторинга
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+# Общие настройки логирования
+logging:
+  level:
+    org.springframework.kafka: DEBUG
+    org.apache.kafka: INFO
+    org.springframework.security: DEBUG
+    org.springframework.security.oauth2: DEBUG

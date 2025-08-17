@@ -1,28 +1,22 @@
 package ru.dmitartur.order.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import ru.dmitartur.order.dto.OrderDto;
 import ru.dmitartur.order.entity.Order;
+import ru.dmitartur.order.event.OrderCancelledEvent;
+import ru.dmitartur.order.event.OrderCreatedEvent;
 import ru.dmitartur.order.mapper.OrderMapper;
 import ru.dmitartur.order.repository.OrderRepository;
-import ru.dmitartur.order.repository.OrderStatusHistoryRepository;
 import ru.dmitartur.common.enums.OrderStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.dmitartur.order.service.product.ProductService;
-import ru.dmitartur.order.service.product.StockUpdateService;
 
 import java.util.Optional;
-import java.time.OffsetDateTime;
-import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
-import org.springframework.data.domain.PageImpl;
 
 @Slf4j
 @Service
@@ -30,11 +24,8 @@ import org.springframework.data.domain.PageImpl;
 @Transactional
 public class OrderService {
     private final OrderRepository orderRepository;
-    private final OrderStatusHistoryRepository orderStatusHistoryRepository;
     private final OrderMapper orderMapper;
-    private final ProductService productService;
-    private final StockUpdateService stockUpdateService;
-    private final OrderBatchProcessor orderBatchProcessor;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Получить все заказы с пагинацией
@@ -85,8 +76,8 @@ public class OrderService {
         log.info("✅ Order saved successfully: id={}, postingNumber={}", 
                 savedOrder.getId(), savedOrder.getPostingNumber());
         
-        // Обновляем остатки через Kafka события
-        stockUpdateService.updateStockForOrder(savedOrder);
+        // Публикуем событие создания заказа
+        eventPublisher.publishEvent(new OrderCreatedEvent(this, savedOrder));
         
         return savedOrder;
     }
@@ -104,8 +95,8 @@ public class OrderService {
             order.getStatus() == OrderStatus.CANCELLED) {
             
             log.info("🔄 Order status changed to CANCELLED: postingNumber={}", order.getPostingNumber());
-            // Обновляем остатки через Kafka события при отмене
-            stockUpdateService.updateStockForCancelledOrder(order);
+            // Публикуем событие отмены заказа
+            eventPublisher.publishEvent(new OrderCancelledEvent(this, order));
         }
         
         Order updatedOrder = orderRepository.save(order);
@@ -179,9 +170,6 @@ public class OrderService {
         return dtoPage;
     }
 
-    /**
-     * Получить заказы с фильтрами (DTO)
-     */
     /**
      * Получить заказы с фильтрами (DTO)
      */
@@ -297,16 +285,6 @@ public class OrderService {
             return Optional.empty();
         }
     }
-
-    /**
-     * Пакетное обновление заказов из Ozon
-     */
-    @Transactional
-    public int upsertBatch(JsonNode payload) {
-        return orderBatchProcessor.processOzonBatch(payload);
-    }
-    
-
 }
 
 

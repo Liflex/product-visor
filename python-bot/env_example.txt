@@ -1,0 +1,12 @@
+# Telegram Bot Configuration
+BOT_TOKEN=your_telegram_bot_token_here
+
+# Kafka Configuration
+KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+KAFKA_TOPIC_OUTGOING=telegram.outgoing.messages
+KAFKA_CONSUMER_GROUP=python-bot
+KAFKA_TOPIC_USER_EVENTS=user.events
+KAFKA_TOPIC_ORDER_EVENTS=order-events
+
+# Metrics Configuration
+METRICS_PORT=9101

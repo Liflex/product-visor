@@ -18,7 +18,7 @@
 - **ozon-service**: 9097
 
 ### gRPC порты
-- **product-visor-backend**: 9093 (изменен с 9092)
+- **product-visor-backend**: 9093
 - **order-service**: 9091
 
 ### Инфраструктура
@@ -43,19 +43,18 @@ grpc:
 ```
 
 ### В коде Java
+
 ```java
-import ru.dmitartur.common.config.ServicePorts;
-import ru.dmitartur.common.config.ServiceUrls;
-import ru.dmitartur.common.config.ServiceConfig;
+
 
 // Получить порт
 int port = ServicePorts.PRODUCT_VISOR_BACKEND_HTTP;
 
-// Получить URL
-String url = ServiceUrls.PRODUCT_VISOR_BACKEND_HTTP_URL;
+        // Получить URL
+        String url = ServiceUrls.PRODUCT_VISOR_BACKEND_HTTP_URL;
 
-// Или через утилиту
-String grpcUrl = ServiceConfig.getProductServiceGrpcUrl();
+        // Или через утилиту
+        String grpcUrl = ServiceConfig.getProductServiceGrpcUrl();
 ```
 
 ## Изменение портов

@@ -1,0 +1,14 @@
+version: "3.8"
+services:
+  python-bot:
+    build: .
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_TOPIC_OUTGOING=telegram.outgoing.messages
+      - KAFKA_CONSUMER_GROUP=python-bot
+      - METRICS_PORT=9101
+    network_mode: host
+
+
+

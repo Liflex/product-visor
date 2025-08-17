@@ -4,7 +4,12 @@ import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
-import ru.dmitartur.common.grpc.*;
+import ru.dmitartur.common.grpc.FindByArticleRequest;
+import ru.dmitartur.common.grpc.FindByArticleResponse;
+import ru.dmitartur.common.grpc.ProductInfoDto;
+import ru.dmitartur.common.grpc.ProductServiceGrpc;
+import ru.dmitartur.common.grpc.UpdateStockRequest;
+import ru.dmitartur.common.grpc.UpdateStockResponse;
 import ru.dmitartur.entity.Product;
 import ru.dmitartur.service.ProductService;
 

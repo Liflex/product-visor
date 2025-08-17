@@ -1,0 +1,58 @@
+spring:
+  application:
+    name: client-service
+  datasource:
+    url: jdbc:postgresql://localhost:5433/product_visor
+    username: postgres
+    password: postgres
+    hikari:
+      schema: client
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: client
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    schemas: client
+    default-schema: client
+    baseline-on-migrate: true
+    validate-on-migrate: true
+  profiles:
+    active: common
+
+# Специфичные для ClientService настройки
+kafka:
+  topics:
+    client-events: client-service-events
+    order-events: order-events
+    user-events: user.events
+    telegram-outgoing: telegram.outgoing.messages
+
+# gRPC конфигурация
+grpc:
+  server:
+    port: 9100
+  client:
+    product-service:
+      address: localhost:9093
+
+# Специфичные для ClientService настройки логирования
+logging:
+  level:
+    ru.dmitartur.client: DEBUG
+    ru.dmitartur.client.service.ProductGrpcService: DEBUG
+    net.devh.boot.grpc: DEBUG
+
+# Порт приложения
+server:
+  port: 9089
+
+# Конфигурация внешних сервисов
+app:
+  product-service:
+    url: http://localhost:8085

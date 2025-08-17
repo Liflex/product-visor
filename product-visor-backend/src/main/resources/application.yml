@@ -1,4 +1,7 @@
 spring:
+  config:
+    import:
+      - classpath:application-common.yml
   servlet:
     multipart:
       max-file-size: 10MB
@@ -23,6 +26,8 @@ spring:
           auto: update
         jdbc:
           time_zone: UTC
+  profiles:
+    active: common
 logging:
   level:
     org.hibernate.SQL: DEBUG
@@ -35,20 +40,11 @@ logging:
     ru.dmitartur.grpc.ProductGrpcServer: DEBUG
     net.devh.boot.grpc: DEBUG
 
-# Kafka конфигурация
+# Kafka конфигурация (наследуется из common-core)
 kafka:
-  enabled: true  # Включаем Kafka
-  bootstrap-servers: localhost:9092
+  enabled: true
   topics:
     order-events: order-events
-  consumer:
-    group-id: product-visor-group
-    auto-offset-reset: earliest
-    key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-    value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-    # Настройки для работы с Kafka
-    properties:
-      isolation.level: read_committed
 
 server:
   port: 8085

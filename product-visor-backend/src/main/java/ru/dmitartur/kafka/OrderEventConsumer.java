@@ -39,8 +39,7 @@ public class OrderEventConsumer {
     public void handleOrderEvent(@Payload String message, 
                                 @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
                                 @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
-                                @Header(KafkaHeaders.OFFSET) long offset,
-                                @Header(KafkaHeaders.ACKNOWLEDGMENT) org.springframework.kafka.support.Acknowledgment ack) {
+                                @Header(KafkaHeaders.OFFSET) long offset) {
         
         try {
             log.debug("📥 Received order event: topic={}, partition={}, offset={}", topic, partition, offset);
@@ -66,8 +65,8 @@ public class OrderEventConsumer {
         } catch (Exception e) {
             log.error("❌ Error processing order event: message={}, error={}", message, e.getMessage(), e);
         } finally {
-            // Подтверждаем обработку сообщения
-            ack.acknowledge();
+            // Автоматическое подтверждение сообщения
+            // ack.acknowledge(); // Убрано, так как используем автоматическое подтверждение
         }
     }
     
