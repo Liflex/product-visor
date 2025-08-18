@@ -2,45 +2,47 @@ package ru.dmitartur.order.mapper;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import ru.dmitartur.order.dto.OrderDto;
-import ru.dmitartur.order.dto.OrderItemDto;
+import org.mapstruct.Named;
+import ru.dmitartur.common.dto.OrderDto;
 import ru.dmitartur.order.entity.Order;
-import ru.dmitartur.order.entity.OrderItem;
 
-import java.time.OffsetDateTime;
-import java.util.List;
+import java.time.LocalDateTime;
 
-@Mapper(componentModel = "spring", uses = {OrderItemDtoMapper.class})
+@Mapper(componentModel = "spring")
 public interface OrderMapper {
 
-    // Методы для создания Order из примитивов (бывший OrderMapper)
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "postingNumber", source = "postingNumber")
-    @Mapping(target = "source", constant = "OZON_FBO")
-    @Mapping(target = "market", constant = "OZON")
-    @Mapping(target = "status", source = "status")
-    @Mapping(target = "createdAt", expression = "java(now())")
-    @Mapping(target = "ozonCreatedAt", source = "createdAt")
-    @Mapping(target = "updatedAt", expression = "java(now())")
-    @Mapping(target = "customerName", ignore = true)
-    @Mapping(target = "customerPhone", ignore = true)
-    @Mapping(target = "address", ignore = true)
-    @Mapping(target = "totalPrice", ignore = true)
-    @Mapping(target = "items", ignore = true)
-    Order toEntity(String postingNumber, String status, OffsetDateTime createdAt);
+    @Mapping(source = "postingNumber", target = "postingNumber")
+    @Mapping(source = "status", target = "status")
+    @Mapping(source = "createdAt", target = "createdAt")
+    Order toEntity(String postingNumber, String status, LocalDateTime createdAt);
 
-    // Методы для Entity ↔ DTO преобразования (бывший OrderDtoMapper)
-    @Mapping(target = "items", source = "items")
+    @Mapping(source = "id", target = "id")
+    @Mapping(source = "postingNumber", target = "postingNumber")
+    @Mapping(source = "source", target = "source")
+    @Mapping(source = "market", target = "market")
+    @Mapping(source = "status", target = "status")
+    @Mapping(source = "createdAt", target = "createdAt")
+    @Mapping(source = "updatedAt", target = "updatedAt")
+    @Mapping(source = "ozonCreatedAt", target = "ozonCreatedAt")
+    @Mapping(source = "customerName", target = "customerName")
+    @Mapping(source = "customerPhone", target = "customerPhone")
+    @Mapping(source = "address", target = "address")
+    @Mapping(source = "totalPrice", target = "totalPrice")
+    @Mapping(source = "items", target = "items")
+    @Mapping(source = "inProcessAt", target = "inProcessAt")
+    @Mapping(source = "shipmentDate", target = "shipmentDate")
+    @Mapping(source = "deliveringDate", target = "deliveringDate")
+    @Mapping(source = "cancelReason", target = "cancelReason")
+    @Mapping(source = "cancelReasonId", target = "cancelReasonId")
+    @Mapping(source = "cancellationType", target = "cancellationType")
+    @Mapping(source = "trackingNumber", target = "trackingNumber")
+    @Mapping(source = "deliveryMethodName", target = "deliveryMethodName")
+    @Mapping(source = "substatus", target = "substatus")
+    @Mapping(source = "isExpress", target = "isExpress")
     OrderDto toDto(Order order);
-    
-    @Mapping(target = "items", source = "items")
-    Order toEntity(OrderDto orderDto);
-    
-    List<OrderDto> toDtoList(List<Order> orders);
-    
-    List<Order> toEntityList(List<OrderDto> orderDtos);
 
-    default OffsetDateTime now() { return OffsetDateTime.now(); }
+    @Named("now")
+    default LocalDateTime now() { return LocalDateTime.now(); }
 }
 
 

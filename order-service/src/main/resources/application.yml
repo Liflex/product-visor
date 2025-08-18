@@ -2,7 +2,7 @@ spring:
   application:
     name: order-service
   datasource:
-    url: jdbc:postgresql://localhost:5433/product_visor
+    url: jdbc:postgresql://localhost:5433/product_visor?options=-c%20TimeZone=Europe/Moscow
     username: postgres
     password: postgres
   jpa:

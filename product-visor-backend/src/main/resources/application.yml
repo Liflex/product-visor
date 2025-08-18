@@ -9,14 +9,14 @@ spring:
     resources:
       static-locations: F:\images
   datasource:
-    url: jdbc:postgresql://localhost:5433/product_visor
+    url: jdbc:postgresql://localhost:5433/product_visor?options=-c%20TimeZone=Europe/Moscow
     username: postgres
     password: postgres
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
@@ -28,11 +28,13 @@ spring:
     active: common
 logging:
   level:
-    org.hibernate.SQL: DEBUG
+    root: INFO
+    ru.dmitartur: DEBUG
+    org.hibernate.SQL: INFO
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
     org.hibernate.tool.hbm2ddl: DEBUG
     ru.dmitartur.kafka: DEBUG
-    org.springframework.kafka: DEBUG
+    org.springframework.kafka: INFO
     org.apache.kafka: INFO
     ru.dmitartur.config.KafkaConfig: DEBUG
     ru.dmitartur.grpc.ProductGrpcServer: DEBUG
@@ -43,6 +45,7 @@ kafka:
   enabled: true
   topics:
     order-events: order-events
+    stock-events: stock-events
 
 server:
   port: 8085

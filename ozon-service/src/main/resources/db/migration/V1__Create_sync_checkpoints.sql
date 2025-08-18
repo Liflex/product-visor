@@ -5,21 +5,16 @@ CREATE SCHEMA IF NOT EXISTS ozon;
 CREATE TABLE IF NOT EXISTS ozon.sync_checkpoints (
     id BIGSERIAL PRIMARY KEY,
     checkpoint_name VARCHAR(100) NOT NULL UNIQUE,
-    last_sync_at TIMESTAMPTZ NOT NULL,
+    last_sync_at TIMESTAMP NOT NULL,
     last_order_id BIGINT,
     last_posting_number VARCHAR(100),
     orders_processed INTEGER DEFAULT 0,
     sync_duration_ms BIGINT,
     status VARCHAR(20) DEFAULT 'SUCCESS',
     error_message TEXT,
-    created_at TIMESTAMPTZ NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
 );
-
--- Индексы для быстрого поиска
-CREATE INDEX IF NOT EXISTS idx_sync_checkpoints_name ON ozon.sync_checkpoints(checkpoint_name);
-CREATE INDEX IF NOT EXISTS idx_sync_checkpoints_last_sync ON ozon.sync_checkpoints(last_sync_at);
-CREATE INDEX IF NOT EXISTS idx_sync_checkpoints_status ON ozon.sync_checkpoints(status);
 
 -- Комментарии к таблице
 COMMENT ON TABLE ozon.sync_checkpoints IS 'Точки синхронизации с внешними API';

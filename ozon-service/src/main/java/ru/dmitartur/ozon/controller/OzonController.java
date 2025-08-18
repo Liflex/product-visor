@@ -52,6 +52,19 @@ public class OzonController {
         return ResponseEntity.ok(ozonService.fbsPostingGet(req));
     }
 
+    /**
+     * Update OZON stock by article (offer_id). Optional warehouseId can be provided as request param.
+     * Body example: { "quantity": 42 }
+     */
+    @PostMapping("/stock/{offerId}")
+    public ResponseEntity<JsonNode> updateOzonStock(@PathVariable("offerId") String offerId,
+                                                    @RequestBody JsonNode body,
+                                                    @RequestParam(value = "warehouseId", required = false) String warehouseId) {
+        int qty = body.path("quantity").asInt();
+        JsonNode result = ozonService.updateStock(offerId, qty, warehouseId);
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/sync/status")
     public ResponseEntity<SyncStatusResponse> getSyncStatus() {
         var checkpoint = scheduler.getLastSyncInfo();
@@ -96,12 +109,12 @@ public class OzonController {
      */
     public static class SyncStatusResponse {
         private String status;
-        private java.time.OffsetDateTime lastSyncAt;
+        private java.time.LocalDateTime lastSyncAt;
         private Integer ordersProcessed;
         private Long syncDurationMs;
         private String errorMessage;
 
-        public SyncStatusResponse(String status, java.time.OffsetDateTime lastSyncAt, 
+        public SyncStatusResponse(String status, java.time.LocalDateTime lastSyncAt,
                                 Integer ordersProcessed, Long syncDurationMs, String errorMessage) {
             this.status = status;
             this.lastSyncAt = lastSyncAt;
@@ -112,7 +125,7 @@ public class OzonController {
 
         // Getters
         public String getStatus() { return status; }
-        public java.time.OffsetDateTime getLastSyncAt() { return lastSyncAt; }
+        public java.time.LocalDateTime getLastSyncAt() { return lastSyncAt; }
         public Integer getOrdersProcessed() { return ordersProcessed; }
         public Long getSyncDurationMs() { return syncDurationMs; }
         public String getErrorMessage() { return errorMessage; }

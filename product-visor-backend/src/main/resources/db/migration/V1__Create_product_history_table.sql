@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS visor.product_history (
     change_reason VARCHAR(100) NOT NULL,
     source_system VARCHAR(50),
     source_id VARCHAR(100),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     metadata TEXT
 );
 

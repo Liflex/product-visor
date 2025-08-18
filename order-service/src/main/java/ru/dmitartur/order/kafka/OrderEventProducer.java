@@ -1,6 +1,5 @@
 package ru.dmitartur.order.kafka;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
@@ -10,8 +9,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
+import ru.dmitartur.common.events.EventType;
+import ru.dmitartur.order.entity.Order;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -37,56 +38,63 @@ public class OrderEventProducer {
     /**
      * Отправить событие создания заказа
      */
-    public void sendOrderCreatedEvent(JsonNode orderData) {
-        sendEvent(orderData, "ORDER_CREATED");
+    public void sendOrderCreatedEvent(Order order) {
+        sendEvent(order, EventType.ORDER_CREATED);
     }
     
     /**
      * Отправить событие отмены заказа
      */
-    public void sendOrderCancelledEvent(JsonNode orderData) {
-        sendEvent(orderData, "ORDER_CANCELLED");
+    public void sendOrderCancelledEvent(Order order) {
+        sendEvent(order, EventType.ORDER_CANCELLED);
     }
     
-    private void sendEvent(JsonNode orderData, String eventType) {
+    private void sendEvent(Order order, EventType eventType) {
         try {
             // Создаем событие на основе данных заказа
             ObjectNode event = objectMapper.createObjectNode();
-            event.put("eventType", eventType);
-            event.put("postingNumber", orderData.path("posting_number").asText());
-            event.put("source", orderData.path("source").asText());
-            event.put("eventTime", OffsetDateTime.now().toString());
-            event.set("items", orderData.path("products"));
+            event.put("eventType", eventType.name());
+            event.put("postingNumber", order.getPostingNumber());
+            event.put("source", order.getSource());
+            event.put("eventTime", LocalDateTime.now().toString());
             
-            // Добавляем общую стоимость заказа
-            JsonNode products = orderData.path("products");
-            if (products.isArray() && products.size() > 0) {
-                double totalPrice = 0.0;
-                for (JsonNode product : products) {
-                    String priceStr = product.path("price").asText("0");
-                    int quantity = product.path("quantity").asInt(1);
-                    try {
-                        totalPrice += Double.parseDouble(priceStr) * quantity;
-                    } catch (NumberFormatException e) {
-                        log.warn("⚠️ Invalid price format in product: {}", priceStr);
+            // Добавляем товары заказа
+            ObjectNode productsNode = objectMapper.createObjectNode();
+            var productsArray = objectMapper.createArrayNode();
+            
+            double totalPrice = 0.0;
+            for (var item : order.getItems()) {
+                if (item.getProductId() != null) { // Только найденные продукты
+                    ObjectNode product = objectMapper.createObjectNode();
+                    product.put("offer_id", item.getOfferId()); // offer_id = article
+                    product.put("name", item.getName());
+                    product.put("quantity", item.getQuantity());
+                    product.put("sku", item.getSku());
+                    product.put("price", item.getPrice() != null ? item.getPrice().toString() : "0");
+                    productsArray.add(product);
+                    
+                    // Вычисляем общую стоимость
+                    if (item.getPrice() != null) {
+                        totalPrice += item.getPrice().doubleValue() * item.getQuantity();
                     }
                 }
-                event.put("totalPrice", String.format("%.2f", totalPrice));
             }
+            event.set("items", productsArray);
+            event.put("totalPrice", String.format("%.2f", totalPrice));
             
             // Добавляем название первого товара как название заказа
-            if (products.isArray() && products.size() > 0) {
-                String firstProductName = products.get(0).path("name").asText("");
-                if (!firstProductName.isEmpty()) {
+            if (!order.getItems().isEmpty()) {
+                String firstProductName = order.getItems().get(0).getName();
+                if (firstProductName != null && !firstProductName.isEmpty()) {
                     event.put("orderName", firstProductName);
                 }
             }
             
             String message = objectMapper.writeValueAsString(event);
-            String key = orderData.path("posting_number").asText();
+            String key = order.getPostingNumber();
             
             log.info("📤 Sending {} event to Kafka: postingNumber={}, items={}, totalPrice={}", 
-                    eventType, key, products.size(), event.path("totalPrice").asText("N/A"));
+                    eventType, key, order.getItems().size(), event.path("totalPrice").asText("N/A"));
             
             CompletableFuture<SendResult<String, String>> future = kafkaTemplate.send(orderEventsTopic, key, message);
             
@@ -104,7 +112,7 @@ public class OrderEventProducer {
             
         } catch (Exception e) {
             log.error("❌ Error sending {} event: postingNumber={}, error={}", 
-                    eventType, orderData.path("posting_number").asText(), e.getMessage());
+                    eventType.name(), order.getPostingNumber(), e.getMessage());
         }
     }
 }

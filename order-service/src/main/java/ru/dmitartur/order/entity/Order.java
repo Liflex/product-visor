@@ -11,7 +11,7 @@ import ru.dmitartur.common.enums.Market;
 import ru.dmitartur.common.enums.OrderStatus;
 
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,14 +41,14 @@ public class Order {
 
     @Column(name = "created_at", updatable = false)
     @CreationTimestamp
-    private OffsetDateTime createdAt;
+    private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
     @UpdateTimestamp
-    private OffsetDateTime updatedAt;
+    private LocalDateTime updatedAt;
 
     @Column(name = "ozon_created_at")
-    private OffsetDateTime ozonCreatedAt; // Дата создания заказа в Ozon
+    private LocalDateTime ozonCreatedAt; // Дата создания заказа в Ozon
 
     @Column(name = "customer_name")
     private String customerName;
@@ -67,13 +67,13 @@ public class Order {
 
     // FBS поля - даты
     @Column(name = "in_process_at")
-    private OffsetDateTime inProcessAt; // Дата начала обработки
+    private LocalDateTime inProcessAt; // Дата начала обработки
 
     @Column(name = "shipment_date")
-    private OffsetDateTime shipmentDate; // Дата отправки
+    private LocalDateTime shipmentDate; // Дата отправки
 
     @Column(name = "delivering_date")
-    private OffsetDateTime deliveringDate; // Дата начала доставки
+    private LocalDateTime deliveringDate; // Дата начала доставки
 
     // FBS поля - отмена
     @Column(name = "cancel_reason")

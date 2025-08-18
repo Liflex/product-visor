@@ -183,13 +183,13 @@ public class OrderInternalGrpcServer extends OrderInternalServiceGrpc.OrderInter
         order.setStatus(ru.dmitartur.common.enums.OrderStatus.valueOf(grpcOrder.getStatus().name()));
         
         if (!grpcOrder.getCreatedAt().isEmpty()) {
-            order.setCreatedAt(java.time.OffsetDateTime.parse(grpcOrder.getCreatedAt()));
+            order.setCreatedAt(java.time.LocalDateTime.parse(grpcOrder.getCreatedAt()));
         }
         if (!grpcOrder.getOzonCreatedAt().isEmpty()) {
-            order.setOzonCreatedAt(java.time.OffsetDateTime.parse(grpcOrder.getOzonCreatedAt()));
+            order.setOzonCreatedAt(java.time.LocalDateTime.parse(grpcOrder.getOzonCreatedAt()));
         }
         if (!grpcOrder.getUpdatedAt().isEmpty()) {
-            order.setUpdatedAt(java.time.OffsetDateTime.parse(grpcOrder.getUpdatedAt()));
+            order.setUpdatedAt(java.time.LocalDateTime.parse(grpcOrder.getUpdatedAt()));
         }
         
         order.setCustomerName(grpcOrder.getCustomerName());
@@ -202,13 +202,13 @@ public class OrderInternalGrpcServer extends OrderInternalServiceGrpc.OrderInter
         
         // FBS поля - даты
         if (!grpcOrder.getInProcessAt().isEmpty()) {
-            order.setInProcessAt(java.time.OffsetDateTime.parse(grpcOrder.getInProcessAt()));
+            order.setInProcessAt(java.time.LocalDateTime.parse(grpcOrder.getInProcessAt()));
         }
         if (!grpcOrder.getShipmentDate().isEmpty()) {
-            order.setShipmentDate(java.time.OffsetDateTime.parse(grpcOrder.getShipmentDate()));
+            order.setShipmentDate(java.time.LocalDateTime.parse(grpcOrder.getShipmentDate()));
         }
         if (!grpcOrder.getDeliveringDate().isEmpty()) {
-            order.setDeliveringDate(java.time.OffsetDateTime.parse(grpcOrder.getDeliveringDate()));
+            order.setDeliveringDate(java.time.LocalDateTime.parse(grpcOrder.getDeliveringDate()));
         }
         
         // FBS поля - отмена

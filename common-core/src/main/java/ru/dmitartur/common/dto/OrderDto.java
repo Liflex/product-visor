@@ -5,6 +5,7 @@ import ru.dmitartur.common.enums.Market;
 import ru.dmitartur.common.enums.OrderStatus;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -18,9 +19,9 @@ public class OrderDto {
     private String source;
     private Market market;
     private OrderStatus status;
-    private OffsetDateTime createdAt;
-    private OffsetDateTime updatedAt;
-    private OffsetDateTime ozonCreatedAt; // Дата создания заказа в Ozon
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private LocalDateTime ozonCreatedAt; // Дата создания заказа в Ozon
     private String customerName;
     private String customerPhone;
     private String address;
@@ -28,9 +29,9 @@ public class OrderDto {
     private List<OrderItemDto> items;
 
     // FBS поля - даты
-    private OffsetDateTime inProcessAt;
-    private OffsetDateTime shipmentDate;
-    private OffsetDateTime deliveringDate;
+    private LocalDateTime inProcessAt;
+    private LocalDateTime shipmentDate;
+    private LocalDateTime deliveringDate;
 
     // FBS поля - отмена
     private String cancelReason;

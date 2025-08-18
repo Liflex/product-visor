@@ -11,7 +11,7 @@ import ru.dmitartur.entity.ProductHistory;
 import ru.dmitartur.mapper.ProductHistoryMapper;
 import ru.dmitartur.repository.ProductHistoryRepository;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -118,7 +118,7 @@ public class ProductHistoryService {
     /**
      * Найти историю изменений за период
      */
-    public Page<ProductHistoryDto> findByDateRange(OffsetDateTime fromDate, OffsetDateTime toDate, Pageable pageable) {
+    public Page<ProductHistoryDto> findByDateRange(LocalDateTime fromDate, LocalDateTime toDate, Pageable pageable) {
         log.debug("🔍 Finding product history by date range: {} to {}", fromDate, toDate);
         Page<ProductHistory> page = repository.findByDateRange(fromDate, toDate, pageable);
         return page.map(mapper::toDto);
@@ -136,7 +136,7 @@ public class ProductHistoryService {
     /**
      * Найти изменения по причине и периоду
      */
-    public List<ProductHistoryDto> findByChangeReasonAndDateRange(String changeReason, OffsetDateTime fromDate, OffsetDateTime toDate) {
+    public List<ProductHistoryDto> findByChangeReasonAndDateRange(String changeReason, LocalDateTime fromDate, LocalDateTime toDate) {
         log.debug("🔍 Finding product history by reason: {} and date range: {} to {}", changeReason, fromDate, toDate);
         List<ProductHistory> history = repository.findByChangeReasonAndDateRange(changeReason, fromDate, toDate);
         return history.stream().map(mapper::toDto).toList();

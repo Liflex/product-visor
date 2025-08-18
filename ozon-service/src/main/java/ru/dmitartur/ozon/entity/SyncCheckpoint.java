@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
 /**
@@ -26,7 +27,7 @@ public class SyncCheckpoint {
     private String checkpointName; // FBO_ORDERS, PRODUCTS, etc.
     
     @Column(name = "last_sync_at", nullable = false)
-    private OffsetDateTime lastSyncAt;
+    private LocalDateTime lastSyncAt;
     
     @Column(name = "last_order_id")
     private Long lastOrderId; // ID последнего обработанного заказа
@@ -47,23 +48,23 @@ public class SyncCheckpoint {
     private String errorMessage; // Сообщение об ошибке, если есть
     
     @Column(name = "created_at", nullable = false)
-    private OffsetDateTime createdAt;
+    private LocalDateTime createdAt;
     
     @Column(name = "updated_at", nullable = false)
-    private OffsetDateTime updatedAt;
+    private LocalDateTime updatedAt;
     
     @PrePersist
     protected void onCreate() {
-        createdAt = OffsetDateTime.now();
-        updatedAt = OffsetDateTime.now();
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
     }
     
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = OffsetDateTime.now();
+        updatedAt = LocalDateTime.now();
     }
     
-    public SyncCheckpoint(String checkpointName, OffsetDateTime lastSyncAt) {
+    public SyncCheckpoint(String checkpointName, LocalDateTime lastSyncAt) {
         this.checkpointName = checkpointName;
         this.lastSyncAt = lastSyncAt;
         this.status = "SUCCESS";

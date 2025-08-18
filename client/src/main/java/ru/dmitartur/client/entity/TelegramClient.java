@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "telegram_client", schema = "client",
@@ -31,18 +31,18 @@ public class TelegramClient {
     private String email;
 
     @Column(name = "registered_at", nullable = false, updatable = false)
-    private OffsetDateTime registeredAt;
+    private LocalDateTime registeredAt;
 
     @Column(name = "premium", nullable = false)
     private boolean premium;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     @CreationTimestamp
-    private OffsetDateTime createdAt;
+    private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
     @UpdateTimestamp
-    private OffsetDateTime updatedAt;
+    private LocalDateTime updatedAt;
 
     public Long getChatId() { return chatId; }
     public void setChatId(Long chatId) { this.chatId = chatId; }
@@ -56,12 +56,12 @@ public class TelegramClient {
     public void setLastName(String lastName) { this.lastName = lastName; }
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
-    public OffsetDateTime getRegisteredAt() { return registeredAt; }
-    public void setRegisteredAt(OffsetDateTime registeredAt) { this.registeredAt = registeredAt; }
+    public LocalDateTime getRegisteredAt() { return registeredAt; }
+    public void setRegisteredAt(LocalDateTime registeredAt) { this.registeredAt = registeredAt; }
     public boolean isPremium() { return premium; }
     public void setPremium(boolean premium) { this.premium = premium; }
-    public OffsetDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
-    public OffsetDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 } 

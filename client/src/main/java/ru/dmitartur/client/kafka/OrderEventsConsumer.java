@@ -68,8 +68,13 @@ public class OrderEventsConsumer {
             // Получаем всех активных пользователей для отправки уведомлений
             List<ru.dmitartur.client.entity.TelegramClient> clients = telegramClientRepository.findAll();
 
-            switch (eventType) {
-                case "ORDER_CREATED":
+            ru.dmitartur.common.events.EventType type = ru.dmitartur.common.events.EventType.from(eventType);
+            if (type == null) {
+                log.warn("⚠️ Unknown order event type: {}", eventType);
+                return;
+            }
+            switch (type) {
+                case ORDER_CREATED:
                     for (var client : clients) {
                         telegramOutgoingProducer.sendOrderCreated(
                                 client.getChatId(), 
@@ -83,7 +88,7 @@ public class OrderEventsConsumer {
                     log.info("✅ Sent ORDER_CREATED notifications to {} clients", clients.size());
                     break;
 
-                case "ORDER_CANCELLED":
+                case ORDER_CANCELLED:
                     for (var client : clients) {
                         telegramOutgoingProducer.sendOrderCancelled(
                                 client.getChatId(), 

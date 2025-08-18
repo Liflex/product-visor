@@ -179,3 +179,4 @@ docker-compose exec kafka kafka-topics --bootstrap-server kafka:29092 \
 2. Включить SASL аутентификацию
 3. Настроить ACL для контроля доступа
 4. Использовать secrets для хранения паролей
+

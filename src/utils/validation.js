@@ -340,7 +340,8 @@ export const validateAttributeValue = (value, attribute) => {
     case 'string':
       return validateString(value, { required, fieldName });
     case 'double':
-      return validateNumber(value, { required, fieldName, min: 0 });
+      // Allow negative values for double fields (like diopters)
+      return validateNumber(value, { required, fieldName });
     case 'integer':
       return validateInteger(value, { required, fieldName, min: 0 });
     case 'date':
@@ -401,6 +402,9 @@ export const validateMultipleAttributeValues = (values, attribute) => {
 export const validateProductForm = (formData, isEdit = false) => {
   const { name, quantity, category, dynamicFields, imageFile } = formData;
   const errors = {};
+  
+  console.log('🔍 Validating form data:', formData);
+  console.log('🔍 Dynamic fields for validation:', dynamicFields);
 
   // Validate product name
   const nameResult = validateString(name, {
@@ -440,12 +444,20 @@ export const validateProductForm = (formData, isEdit = false) => {
 
   // Validate dynamic attributes
   if (category && category.attributes && dynamicFields) {
+    console.log('🔍 Validating attributes for category:', category.name);
     category.attributes.forEach(attribute => {
       const fieldName = attribute.name;
       const fieldValue = dynamicFields[fieldName];
+      
+      console.log(`🔍 Validating attribute ${fieldName}:`, {
+        value: fieldValue,
+        required: attribute.required,
+        type: attribute.type
+      });
 
       // Skip validation if field value is undefined (not yet loaded)
       if (fieldValue === undefined) {
+        console.log(`🔍 Skipping ${fieldName} - undefined`);
         return;
       }
 
@@ -457,11 +469,19 @@ export const validateProductForm = (formData, isEdit = false) => {
       }
 
       if (!validationResult.isValid) {
+        console.log(`🔍 Validation failed for ${fieldName}:`, validationResult.message);
         errors[fieldName] = validationResult.message;
+      } else {
+        console.log(`🔍 Validation passed for ${fieldName}`);
       }
     });
   }
 
+  console.log('🔍 Final validation result:', {
+    isValid: Object.keys(errors).length === 0,
+    errors
+  });
+  
   return {
     isValid: Object.keys(errors).length === 0,
     errors

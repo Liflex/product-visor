@@ -10,3 +10,4 @@ KAFKA_TOPIC_ORDER_EVENTS=order-events
 
 # Metrics Configuration
 METRICS_PORT=9101
+

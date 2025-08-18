@@ -51,7 +51,7 @@ public class TelegramClientService {
         client.setEmail(mapped.getEmail());
         client.setUsername(mapped.getUsername());
         if (client.getRegisteredAt() == null) {
-            client.setRegisteredAt(OffsetDateTime.now());
+            client.setRegisteredAt(LocalDateTime.now());
         }
         telegramClientRepository.save(client);
 
@@ -71,7 +71,7 @@ public class TelegramClientService {
         client.setEmail(mapped.getEmail());
         client.setUsername(mapped.getUsername());
         if (client.getRegisteredAt() == null) {
-            client.setRegisteredAt(OffsetDateTime.now());
+            client.setRegisteredAt(LocalDateTime.now());
         }
         telegramClientRepository.save(client);
 

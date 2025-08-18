@@ -13,9 +13,7 @@ import ru.dmitartur.ozon.repository.SyncCheckpointRepository;
 import ru.dmitartur.ozon.service.OzonService;
 
 import java.time.Duration;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Slf4j
@@ -58,7 +56,7 @@ public class OzonBackfillScheduler {
                 ozonBackfillScheduler.performInitialSync();
             } else {
                 SyncCheckpoint cp = checkpoint.get();
-                Duration gap = Duration.between(cp.getLastSyncAt(), OffsetDateTime.now());
+                Duration gap = Duration.between(cp.getLastSyncAt(), LocalDateTime.now());
                 
                 if (gap.toHours() > maxGapMinutes) {
                     log.warn("⚠️ Large sync gap detected: {} hours, performing catch-up sync", gap.toHours());
@@ -73,9 +71,9 @@ public class OzonBackfillScheduler {
     }
 
     /**
-     * Периодическая проверка синхронизации (каждый час)
+     * Периодическая проверка синхронизации
      */
-    @Scheduled(fixedRate = 900000) // Каждые 15 минут
+    @Scheduled(fixedRate = 120000) // Каждые 2 минуты
     public void periodicSyncCheck() {
         if (!syncEnabled) {
             return;
@@ -88,7 +86,7 @@ public class OzonBackfillScheduler {
             
             if (checkpoint.isPresent()) {
                 SyncCheckpoint cp = checkpoint.get();
-                Duration gap = Duration.between(cp.getLastSyncAt(), OffsetDateTime.now());
+                Duration gap = Duration.between(cp.getLastSyncAt(), LocalDateTime.now());
                 
                 if (gap.toMinutes() > maxGapMinutes) {
                     log.info("🔄 Periodic sync triggered, gap: {} hours", gap.toHours());
@@ -108,14 +106,14 @@ public class OzonBackfillScheduler {
         log.info("🚀 Starting initial sync...");
         
         long startTime = System.currentTimeMillis();
-        SyncCheckpoint checkpoint = new SyncCheckpoint(checkpointName, OffsetDateTime.now());
+        SyncCheckpoint checkpoint = new SyncCheckpoint(checkpointName, LocalDateTime.now());
         checkpoint.setStatus("IN_PROGRESS");
         checkpoint = syncCheckpointRepository.save(checkpoint);
         
         try {
             // Синхронизируем заказы за последние полгода для первого запуска
-            OffsetDateTime from = OffsetDateTime.now().minusDays(180);
-            OffsetDateTime to = OffsetDateTime.now();
+            LocalDateTime from = LocalDateTime.now().minusDays(180);
+            LocalDateTime to = LocalDateTime.now();
             
             log.info("🚀 Initial sync: loading FBO + FBS orders for the last 6 months ({} to {})", from, to);
             
@@ -124,7 +122,7 @@ public class OzonBackfillScheduler {
             
             checkpoint.setOrdersProcessed(processedOrders);
             checkpoint.setStatus("SUCCESS");
-            checkpoint.setLastSyncAt(OffsetDateTime.now());
+            checkpoint.setLastSyncAt(LocalDateTime.now());
             checkpoint.setSyncDurationMs(System.currentTimeMillis() - startTime);
             
             syncCheckpointRepository.save(checkpoint);
@@ -155,15 +153,15 @@ public class OzonBackfillScheduler {
         checkpoint = syncCheckpointRepository.save(checkpoint);
         
         try {
-            OffsetDateTime from = checkpoint.getLastSyncAt();
-            OffsetDateTime to = OffsetDateTime.now();
+            LocalDateTime from = checkpoint.getLastSyncAt();
+            LocalDateTime to = LocalDateTime.now();
             
             int processedOrders = ozonService.backfillAllOrders(
                 new ru.dmitartur.ozon.dto.DateRangeDto(from.toString(), to.toString()), 1000);
             
             checkpoint.setOrdersProcessed(processedOrders);
             checkpoint.setStatus("SUCCESS");
-            checkpoint.setLastSyncAt(OffsetDateTime.now());
+            checkpoint.setLastSyncAt(LocalDateTime.now());
             checkpoint.setSyncDurationMs(System.currentTimeMillis() - startTime);
             
             syncCheckpointRepository.save(checkpoint);

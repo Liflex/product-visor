@@ -67,3 +67,4 @@ docker-compose up -d
 ## Полезные ссылки
 - Метрики: http://localhost:9101/metrics
 - Документация: ../TELEGRAM_BOT_INTEGRATION.md
+

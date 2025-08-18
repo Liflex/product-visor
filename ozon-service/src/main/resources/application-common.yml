@@ -63,7 +63,7 @@ management:
 # Общие настройки логирования
 logging:
   level:
-    org.springframework.kafka: DEBUG
+    org.springframework.kafka: INFO
     org.apache.kafka: INFO
     org.springframework.security: DEBUG
     org.springframework.security.oauth2: DEBUG

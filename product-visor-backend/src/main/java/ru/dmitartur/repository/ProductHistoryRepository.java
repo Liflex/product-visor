@@ -8,7 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import ru.dmitartur.entity.ProductHistory;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -46,8 +46,8 @@ public interface ProductHistoryRepository extends JpaRepository<ProductHistory, 
      * Найти историю изменений за период
      */
     @Query("SELECT ph FROM ProductHistory ph WHERE ph.createdAt BETWEEN :fromDate AND :toDate ORDER BY ph.createdAt DESC")
-    Page<ProductHistory> findByDateRange(@Param("fromDate") OffsetDateTime fromDate, 
-                                        @Param("toDate") OffsetDateTime toDate, 
+    Page<ProductHistory> findByDateRange(@Param("fromDate") LocalDateTime fromDate, 
+                                        @Param("toDate") LocalDateTime toDate, 
                                         Pageable pageable);
     
     /**
@@ -64,6 +64,6 @@ public interface ProductHistoryRepository extends JpaRepository<ProductHistory, 
     @Query("SELECT ph FROM ProductHistory ph WHERE ph.changeReason = :changeReason " +
            "AND ph.createdAt BETWEEN :fromDate AND :toDate ORDER BY ph.createdAt DESC")
     List<ProductHistory> findByChangeReasonAndDateRange(@Param("changeReason") String changeReason,
-                                                       @Param("fromDate") OffsetDateTime fromDate,
-                                                       @Param("toDate") OffsetDateTime toDate);
+                                                       @Param("fromDate") LocalDateTime fromDate,
+                                                       @Param("toDate") LocalDateTime toDate);
 }

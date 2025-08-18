@@ -4,7 +4,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
 /**
  * DTO для истории изменений продукта
@@ -21,6 +21,6 @@ public class ProductHistoryDto {
     private String changeReason;
     private String sourceSystem;
     private String sourceId;
-    private OffsetDateTime createdAt;
+    private LocalDateTime createdAt;
     private String metadata;
 }

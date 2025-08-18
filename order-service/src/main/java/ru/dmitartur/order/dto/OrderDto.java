@@ -4,7 +4,7 @@ import lombok.Data;
 import ru.dmitartur.common.enums.Market;
 
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -14,8 +14,8 @@ public class OrderDto {
     private String source;
     private Market market;
     private String status;
-    private OffsetDateTime createdAt;
-    private OffsetDateTime updatedAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
     private String customerName;
     private String customerPhone;
     private String address;
@@ -23,9 +23,9 @@ public class OrderDto {
     private List<OrderItemDto> items;
     
     // FBS поля - даты
-    private OffsetDateTime inProcessAt;
-    private OffsetDateTime shipmentDate;
-    private OffsetDateTime deliveringDate;
+    private LocalDateTime inProcessAt;
+    private LocalDateTime shipmentDate;
+    private LocalDateTime deliveringDate;
     
     // FBS поля - отмена
     private String cancelReason;

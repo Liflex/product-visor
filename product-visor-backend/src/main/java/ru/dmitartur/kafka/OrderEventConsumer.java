@@ -11,8 +11,9 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
-import ru.dmitartur.entity.Product;
 import ru.dmitartur.service.ProductService;
+import ru.dmitartur.context.ChangeContextHolder;
+import ru.dmitartur.common.events.EventType;
 
 /**
  * Consumer для обработки событий заказов из Kafka
@@ -48,18 +49,29 @@ public class OrderEventConsumer {
             String eventType = event.path("eventType").asText();
             String postingNumber = event.path("postingNumber").asText();
             JsonNode items = event.path("items");
+            String rawMarket = event.hasNonNull("market") ? event.get("market").asText(null) : null;
+            String derivedMarket = rawMarket != null ? rawMarket.toLowerCase() :
+                (event.hasNonNull("source") && event.get("source").asText("").toUpperCase().startsWith("OZON") ? "ozon" : null);
             
             log.info("📦 Processing {} event: postingNumber={}, items={}", eventType, postingNumber, items.size());
             
-            switch (eventType) {
-                case "ORDER_CREATED":
-                    handleOrderCreated(items, postingNumber);
-                    break;
-                case "ORDER_CANCELLED":
-                    handleOrderCancelled(items, postingNumber);
-                    break;
-                default:
+            try (AutoCloseable ignored = ChangeContextHolder.withContext(
+                new ChangeContextHolder.ChangeContext(derivedMarket, "KAFKA", postingNumber))) {
+                EventType type = EventType.from(eventType);
+                if (type == null) {
                     log.warn("⚠️ Unknown event type: {}", eventType);
+                    return;
+                }
+                switch (type) {
+                    case ORDER_CREATED:
+                        handleOrderCreated(items, postingNumber);
+                        break;
+                    case ORDER_CANCELLED:
+                        handleOrderCancelled(items, postingNumber);
+                        break;
+                    default:
+                        log.warn("⚠️ Unhandled event type: {}", eventType);
+                }
             }
             
         } catch (Exception e) {
@@ -112,21 +124,27 @@ public class OrderEventConsumer {
             log.warn("⚠️ Article is null or empty for {}: postingNumber={}", eventType, postingNumber);
             return;
         }
-        
+
         try {
-            boolean updated = productService.updateQuantityByArticle(article, quantityChange);
-            
-            if (updated) {
-                log.info("✅ Updated product quantity: article={}, change={}, event={}, postingNumber={}", 
-                        article, quantityChange, eventType, postingNumber);
-            } else {
-                log.warn("⚠️ Product not found by article: article={}, event={}, postingNumber={}", 
-                        article, eventType, postingNumber);
+            java.util.Optional<ru.dmitartur.entity.Product> productOpt = productService.findByArticle(article);
+            if (!productOpt.isPresent()) {
+                log.warn("⚠️ Product not found by article: article={}, event={}, postingNumber={}", article, eventType, postingNumber);
+                return;
             }
-            
+
+            ru.dmitartur.entity.Product product = productOpt.get();
+            int oldQuantity = product.getQuantity();
+            int newQuantity = productService.computeQuantityWithDelta(oldQuantity, quantityChange);
+            product.setQuantity(newQuantity);
+
+            ru.dmitartur.entity.Product saved = productService.update(product);
+            if (newQuantity != oldQuantity) {
+                productService.trackQuantityChange(saved, oldQuantity, newQuantity);
+            }
+
+            log.info("✅ Updated product quantity: article={}, change={}, event={}, postingNumber={}", article, quantityChange, eventType, postingNumber);
         } catch (Exception e) {
-            log.error("❌ Error updating product quantity: article={}, event={}, postingNumber={}, error={}", 
-                    article, eventType, postingNumber, e.getMessage());
+            log.error("❌ Error updating product quantity: article={}, event={}, postingNumber={}, error={}", article, eventType, postingNumber, e.getMessage());
         }
     }
 }

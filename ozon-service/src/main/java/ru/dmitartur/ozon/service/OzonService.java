@@ -2,8 +2,12 @@ package ru.dmitartur.ozon.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import ru.dmitartur.ozon.integration.OzonSellerApi;
 import ru.dmitartur.common.grpc.OrderInternalServiceGrpc;
@@ -12,6 +16,7 @@ import ru.dmitartur.common.grpc.UpsertOrdersResponse;
 import ru.dmitartur.common.dto.OrderDto;
 import ru.dmitartur.ozon.dto.DateRangeDto;
 import ru.dmitartur.ozon.mapper.OzonOrderMapper;
+import ru.dmitartur.ozon.retry.OzonRetryService;
 
 import java.util.List;
 
@@ -22,18 +27,65 @@ public class OzonService {
     private final OzonSellerApi api;
     private final OrderInternalServiceGrpc.OrderInternalServiceBlockingStub orderStub;
     private final OzonOrderMapper ozonOrderMapper;
+    private final OzonRetryService retryService;
     private final ObjectMapper mapper = new ObjectMapper();
 
+    @Value("${ozon.default-warehouse-id}")
+    private String defaultWarehouseId;
+
     public JsonNode fboPostingList(JsonNode req) {
-        return api.fboPostingList(req);
+        return retryService.executeWithRetry(
+            () -> api.fboPostingList(req), 
+            "fboPostingList"
+        );
     }
 
     public JsonNode fbsPostingList(JsonNode req) {
-        return api.fbsPostingList(req);
+        return retryService.executeWithRetry(
+            () -> api.fbsPostingList(req), 
+            "fbsPostingList"
+        );
     }
 
     public JsonNode fbsPostingGet(JsonNode req) {
-        return api.fbsPostingGet(req);
+        return retryService.executeWithRetry(
+            () -> api.fbsPostingGet(req), 
+            "fbsPostingGet"
+        );
+    }
+
+    /**
+     * Update OZON stock for a given offer (article). If warehouseId is null/empty, OZON may demand it for FBS.
+     */
+    public JsonNode updateStock(String offerId, int newQuantity, String warehouseId) {
+        if (offerId == null || offerId.isEmpty()) {
+            throw new IllegalArgumentException("offerId is required");
+        }
+
+        if(warehouseId == null || warehouseId.isEmpty()) {
+            warehouseId = defaultWarehouseId;
+        }
+
+        ObjectNode root = mapper.createObjectNode();
+        ArrayNode stocks = mapper.createArrayNode();
+        ObjectNode item = mapper.createObjectNode();
+        item.put("offer_id", offerId);
+        item.put("stock", Math.max(0, newQuantity));
+        if (warehouseId != null && !warehouseId.isEmpty()) {
+            item.put("warehouse_id", warehouseId);
+        }
+        stocks.add(item);
+        root.set("stocks", stocks);
+
+        // Используем Spring Retry для обработки ошибок API
+        JsonNode response = retryService.executeUpdateStocksWithRetry(
+            () -> api.updateStocks(root), 
+            offerId
+        );
+        
+        log.info("OZON updateStocks: offerId={}, qty={}, warehouseId={}, response={}", 
+            offerId, newQuantity, warehouseId, response.toString());
+        return response;
     }
 
     /**

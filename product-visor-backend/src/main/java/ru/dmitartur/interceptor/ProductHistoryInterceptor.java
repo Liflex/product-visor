@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.dmitartur.entity.Product;
 import ru.dmitartur.service.ProductHistoryService;
+import ru.dmitartur.kafka.StockEventProducer;
+import ru.dmitartur.context.ChangeContextHolder;
 
 /**
  * Interceptor для отслеживания изменений Product
@@ -16,6 +18,7 @@ import ru.dmitartur.service.ProductHistoryService;
 public class ProductHistoryInterceptor {
     
     private final ProductHistoryService productHistoryService;
+    private final StockEventProducer stockEventProducer;
     
     /**
      * Отследить изменение количества товара
@@ -35,6 +38,18 @@ public class ProductHistoryInterceptor {
             
             log.debug("📝 Tracked quantity change: productId={}, oldQuantity={}, newQuantity={}, reason={}, source={}", 
                     product.getId(), oldQuantity, newQuantity, changeReason, sourceSystem);
+            ChangeContextHolder.ChangeContext ctx = ChangeContextHolder.get();
+            String originMarket = (ctx != null) ? ctx.originMarket : null;
+            stockEventProducer.sendStockChanged(
+                product.getId(),
+                product.getArticle(),
+                oldQuantity,
+                newQuantity,
+                changeReason,
+                sourceSystem,
+                sourceId,
+                originMarket
+            );
                     
         } catch (Exception e) {
             log.error("❌ Error tracking quantity change: productId={}, error={}", 

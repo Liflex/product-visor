@@ -5,7 +5,7 @@ spring:
   application:
     name: ozon-service
   datasource:
-    url: jdbc:postgresql://localhost:5433/product_visor
+    url: jdbc:postgresql://localhost:5433/product_visor?options=-c%20TimeZone=Europe/Moscow
     username: postgres
     password: postgres
     driver-class-name: org.postgresql.Driver
@@ -30,8 +30,13 @@ ozon:
   client-id: ${OZON_CLIENT_ID:2960590}
   api-key: ${OZON_API_KEY:026e58e9-1546-4dd2-b47c-b9f111c1f587}
 
+# Настройка часового пояса для приложения
 server:
   port: 9097
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
 
 # gRPC клиент конфигурация
 grpc:
@@ -48,10 +53,20 @@ app:
     checkpoint-name: FBO_ORDERS
     max-gap-minutes: 15 # Максимальный разрыв в минутах для автоматической синхронизации
 
+# Идентификатор текущего маркета
+application:
+  market:
+    name: OZON
+
+# Kafka topics
+kafka:
+  topics:
+    stock-events: stock-events
+
 # Старая конфигурация для обратной совместимости
 ozon-sync:
   enabled: true
-  window-minutes: 15
+  window-minutes: 1
   page-size: 100
   fixed-delay-ms: 120000
 

@@ -6,7 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
 /**
  * История изменений продукта
@@ -45,7 +45,7 @@ public class ProductHistory {
     
     @Column(name = "created_at", nullable = false)
     @CreatedDate
-    private OffsetDateTime createdAt;
+    private LocalDateTime createdAt;
     
     @Column(name = "metadata")
     private String metadata; // JSON для дополнительных данных
@@ -59,6 +59,6 @@ public class ProductHistory {
         this.changeReason = changeReason;
         this.sourceSystem = sourceSystem;
         this.sourceId = sourceId;
-        this.createdAt = OffsetDateTime.now();
+        this.createdAt = LocalDateTime.now();
     }
 }

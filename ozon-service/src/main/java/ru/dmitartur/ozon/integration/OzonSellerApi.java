@@ -16,6 +16,15 @@ public interface OzonSellerApi {
     
     @PostMapping("/v3/posting/fbs/get")
     JsonNode fbsPostingGet(@RequestBody JsonNode request);
+
+    // Stocks
+    // https://docs.ozon.ru/api/seller/#operation/ProductAPI_UpdateStocksV2
+    @PostMapping("/v2/products/stocks")
+    JsonNode updateStocks(@RequestBody JsonNode request);
+
+    // Warehouses list (to resolve warehouse_id if needed)
+    @PostMapping("/v1/warehouse/list")
+    JsonNode listWarehouses();
 }
 
 

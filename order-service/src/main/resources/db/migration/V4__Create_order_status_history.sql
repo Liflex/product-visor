@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS orders.order_status_history (
     order_id BIGINT NOT NULL REFERENCES orders.orders(id) ON DELETE CASCADE,
     status VARCHAR(50) NOT NULL,
     previous_status VARCHAR(50),
-    changed_at TIMESTAMPTZ NOT NULL,
+    changed_at TIMESTAMP NOT NULL,
     reason TEXT,
     source VARCHAR(50)
 );

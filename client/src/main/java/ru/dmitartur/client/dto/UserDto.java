@@ -12,7 +12,7 @@ import ru.dmitartur.client.enums.Role;
 import ru.dmitartur.client.validation.RussianPhone;
 
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
@@ -38,8 +38,8 @@ public class UserDto {
     @Schema(description = "Признак верификации пользователя", example = "true")
     private boolean isVerified;
 
-    @Schema(description = "Дата регистрации пользователя (ISO 8601)", example = "2024-07-17T12:34:56.789Z")
-    private OffsetDateTime registrationDate;
+    @Schema(description = "Дата регистрации пользователя (ISO 8601)", example = "2024-07-17T12:34:56.789")
+    private LocalDateTime registrationDate;
 
     @NotBlank
     @Schema(description = "Локаль пользователя (язык и регион)", example = "ru_RU")

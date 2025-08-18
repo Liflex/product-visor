@@ -6,10 +6,10 @@ CREATE TABLE client.telegram_client (
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(255),
-    registered_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    registered_at TIMESTAMP NOT NULL DEFAULT NOW(),
     premium BOOLEAN NOT NULL DEFAULT false,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_bot_chat UNIQUE (bot_id, chat_id)
 );
 

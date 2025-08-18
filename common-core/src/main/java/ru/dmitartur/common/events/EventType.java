@@ -25,8 +25,24 @@ public enum EventType {
     ORDER_CREATED,         // New order created
     ORDER_CANCELLED,       // Order cancelled
 
+    // Stock events
+    STOCK_CHANGED,         // Product stock changed
+
     // Reminders
-    ReminderCreate         // Custom reminder creation request
+    ReminderCreate;         // Custom reminder creation request
+
+
+    /**
+     * Safe parser: converts string to EventType or returns null if unknown
+     */
+    public static EventType from(String code) {
+        if (code == null) return null;
+        for (EventType t : values()) {
+            if (t.name().equalsIgnoreCase(code)) {
+                return t;
+            }
+        }
+        return null;
+    }
+
 }
-
-

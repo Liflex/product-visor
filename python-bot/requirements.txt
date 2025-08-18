@@ -2,3 +2,4 @@ aiogram>=3.0.0
 aiokafka>=0.8.0
 prometheus-client>=0.17.0
 pydantic-settings>=2.0.0
+

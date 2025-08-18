@@ -90,6 +90,58 @@ public class ProductController {
         return ResponseEntity.ok(mapper.toDto(updatedProduct));
     }
 
+    @PatchMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE, path = "/{id}")
+    @SneakyThrows
+    public ResponseEntity<ProductDto> patch(@ModelAttribute ProductUploadRequest productUploadRequest, @PathVariable Long id) {
+        logger.info("🩹 Patching product: id={}", id);
+
+        ProductDto incomingDto = objectMapper.readValue(productUploadRequest.getProductData(), ProductDto.class);
+        incomingDto.setId(id);
+
+        // Извлекаем картинку, если прислали
+        byte[] incomingImage = null;
+        if (productUploadRequest.getImage() != null && !productUploadRequest.getImage().isEmpty()) {
+            try {
+                incomingImage = productUploadRequest.getImage().getBytes();
+            } catch (IOException e) {
+                logger.error("❌ Failed to read image file in PATCH", e);
+                throw new RuntimeException("Failed to process image", e);
+            }
+        }
+
+        Optional<Product> existingOpt = service.findById(id);
+        if (existingOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Product existing = existingOpt.get();
+        int oldQuantity = existing.getQuantity() != null ? existing.getQuantity() : 0;
+
+        // Частично переносим поля
+        mapper.updateEntityFromDto(incomingDto, existing);
+
+        // Обновляем картинку, если пришла
+        if (incomingImage != null) {
+            existing.setImage(incomingImage);
+        }
+
+        // Если пришёл quantity — нормализуем и применяем, но не сохраняем дважды
+        if (incomingDto.getQuantity() != null) {
+            int normalized = Math.max(0, incomingDto.getQuantity());
+            existing.setQuantity(normalized);
+        }
+
+        Product saved = service.update(existing);
+
+        // Отслеживаем изменение количества, если оно было
+        int newQuantity = saved.getQuantity() != null ? saved.getQuantity() : 0;
+        if (incomingDto.getQuantity() != null && newQuantity != oldQuantity) {
+            service.trackQuantityChange(saved, oldQuantity, newQuantity);
+        }
+
+        return ResponseEntity.ok(mapper.toDto(saved));
+    }
+
     @GetMapping
     public ResponseEntity<Page<ProductDto>> findAll(
             @RequestParam(value = "page", required = false, defaultValue = "0") int page,
@@ -141,36 +193,6 @@ public class ProductController {
             return ResponseEntity.ok(mapper.toDto(product.get()));
         } else {
             logger.warn("❌ Product not found by article: {}", article);
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    @PostMapping("/sku/{sku}/stock")
-    public ResponseEntity<Void> updateStock(@PathVariable String sku, @RequestBody StockUpdateDto request) {
-        logger.info("📦 Updating product stock: sku={}, change={}", sku, request.getQuantityChange());
-
-        boolean updated = service.updateQuantityByArticle(sku, request.getQuantityChange());
-        
-        if (updated) {
-            logger.info("✅ Product stock updated: sku={}", sku);
-            return ResponseEntity.ok().build();
-        } else {
-            logger.warn("❌ Product not found for stock update: sku={}", sku);
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    @PostMapping("/article/{article}/stock")
-    public ResponseEntity<Void> updateStockByArticle(@PathVariable String article, @RequestBody StockUpdateDto request) {
-        logger.info("📦 Updating product stock: article={}, change={}", article, request.getQuantityChange());
-
-        boolean updated = service.updateQuantityByArticle(article, request.getQuantityChange());
-        
-        if (updated) {
-            logger.info("✅ Product stock updated: article={}", article);
-            return ResponseEntity.ok().build();
-        } else {
-            logger.warn("❌ Product not found for stock update: article={}", article);
             return ResponseEntity.notFound().build();
         }
     }

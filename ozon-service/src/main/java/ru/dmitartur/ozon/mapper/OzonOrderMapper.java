@@ -9,7 +9,7 @@ import ru.dmitartur.common.enums.Market;
 import ru.dmitartur.common.enums.OrderStatus;
 
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,7 +39,7 @@ public class OzonOrderMapper {
             
             // Даты
             orderDto.setCreatedAt(parseDateTime(ozonOrder.path("created_at").asText()));
-            orderDto.setUpdatedAt(OffsetDateTime.now());
+            orderDto.setUpdatedAt(LocalDateTime.now());
             
             // Товары
             List<OrderItemDto> items = new ArrayList<>();
@@ -169,7 +169,7 @@ public class OzonOrderMapper {
             
             // Даты - в FBS нет created_at, используем in_process_at как дату создания
             orderDto.setCreatedAt(parseDateTime(ozonOrder.path("in_process_at").asText()));
-            orderDto.setUpdatedAt(OffsetDateTime.now());
+            orderDto.setUpdatedAt(LocalDateTime.now());
             
             // FBS даты - используем ozonCreatedAt для хранения даты создания от Ozon
             orderDto.setOzonCreatedAt(parseDateTime(ozonOrder.path("in_process_at").asText()));
@@ -273,13 +273,13 @@ public class OzonOrderMapper {
     /**
      * Парсинг даты из строки
      */
-    private OffsetDateTime parseDateTime(String dateString) {
+    private LocalDateTime parseDateTime(String dateString) {
         if (dateString == null || dateString.isEmpty()) {
             return null;
         }
         
         try {
-            return OffsetDateTime.parse(dateString);
+            return LocalDateTime.parse(dateString);
         } catch (DateTimeParseException e) {
             log.warn("❌ Failed to parse date: {}", dateString);
             return null;

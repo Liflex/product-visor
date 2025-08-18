@@ -24,9 +24,6 @@ public class ProductService {
     private static final Logger logger = LoggerFactory.getLogger(ProductService.class);
     
     private final ProductRepository productRepository;
-    private final MarketService marketService;
-    private final ProductMarketService productMarketService;
-    private final ProductMapper productMapper;
     private final ProductHistoryInterceptor productHistoryInterceptor;
 
     /**
@@ -61,7 +58,31 @@ public class ProductService {
     }
 
     public Product update(Product entity) {
-        return productRepository.save(entity);
+        logger.info("🔄 Updating product: id={}, name={}, quantity={}", 
+            entity.getId(), entity.getName(), entity.getQuantity());
+        
+        try {
+            Product savedProduct = productRepository.save(entity);
+            logger.info("✅ Product updated successfully: id={}, name={}, quantity={}", 
+                savedProduct.getId(), savedProduct.getName(), savedProduct.getQuantity());
+            return savedProduct;
+        } catch (Exception e) {
+            logger.error("❌ Error updating product: id={}, error={}", entity.getId(), e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    /**
+     * Compute new quantity based on delta (does not persist)
+     */
+    public int computeQuantityWithDelta(int currentQuantity, int quantityDelta) {
+        int base = Math.max(0, currentQuantity);
+        int newQuantity = base + quantityDelta;
+        return Math.max(0, newQuantity);
+    }
+
+    public void trackQuantityChange(Product product, int oldQuantity, int newQuantity) {
+        productHistoryInterceptor.trackQuantityChange(product, oldQuantity, newQuantity);
     }
 
     public List<Product> findAll() {
@@ -134,55 +155,5 @@ public class ProductService {
         logger.debug("🔎 Searching products by query: '{}'", query);
         return productRepository.searchFullText(query, pageable);
     }
-    
-    /**
-     * Обновить количество товара
-     */
-    public boolean updateQuantity(Long productId, int quantityChange) {
-        try {
-            Optional<Product> productOpt = productRepository.findById(productId);
-            if (productOpt.isPresent()) {
-                Product product = productOpt.get();
-                int oldQuantity = product.getQuantity();
-                int newQuantity = Math.max(0, oldQuantity + quantityChange);
-                product.setQuantity(newQuantity);
-                
-                // Используем общий метод update для сохранения
-                update(product);
-                
-                // Отслеживаем изменение
-                productHistoryInterceptor.trackQuantityChange(product, oldQuantity, newQuantity);
-                
-                logger.info("✅ Updated product quantity: productId={}, change={}, newQuantity={}", 
-                        productId, quantityChange, newQuantity);
-                
-                return true;
-            } else {
-                logger.warn("❌ Product not found for quantity update: productId={}", productId);
-                return false;
-            }
-        } catch (Exception e) {
-            logger.error("❌ Error updating product quantity: productId={}, error={}", productId, e.getMessage());
-            return false;
-        }
-    }
-    
-    /**
-     * Обновить количество товара по артикулу
-     */
-    public boolean updateQuantityByArticle(String article, int quantityChange) {
-        try {
-            Optional<Product> productOpt = productRepository.findByArticle(article);
-            if (productOpt.isPresent()) {
-                Product product = productOpt.get();
-                return updateQuantity(product.getId(), quantityChange);
-            } else {
-                logger.warn("❌ Product not found by article for quantity update: article={}", article);
-                return false;
-            }
-        } catch (Exception e) {
-            logger.error("❌ Error updating product quantity by article: article={}, error={}", article, e.getMessage());
-            return false;
-        }
-    }
+
 }

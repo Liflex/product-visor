@@ -8,12 +8,9 @@ import ru.dmitartur.common.grpc.FindByArticleRequest;
 import ru.dmitartur.common.grpc.FindByArticleResponse;
 import ru.dmitartur.common.grpc.ProductInfoDto;
 import ru.dmitartur.common.grpc.ProductServiceGrpc;
-import ru.dmitartur.common.grpc.UpdateStockRequest;
-import ru.dmitartur.common.grpc.UpdateStockResponse;
 import ru.dmitartur.entity.Product;
 import ru.dmitartur.service.ProductService;
 
-import java.time.OffsetDateTime;
 import java.util.Optional;
 
 /**
@@ -59,45 +56,6 @@ public class ProductGrpcServer extends ProductServiceGrpc.ProductServiceImplBase
             FindByArticleResponse errorResponse = FindByArticleResponse.newBuilder()
                     .setFound(false)
                     .setErrorMessage("Error searching product: " + e.getMessage())
-                    .build();
-            
-            responseObserver.onNext(errorResponse);
-            responseObserver.onCompleted();
-        }
-    }
-
-    @Override
-    public void updateStockByArticle(UpdateStockRequest request, StreamObserver<UpdateStockResponse> responseObserver) {
-        try {
-            String article = request.getArticle();
-            int quantityChange = request.getQuantityChange();
-            
-            log.info("📦 gRPC: Updating product stock: article={}, change={}", article, quantityChange);
-            
-            boolean success = productService.updateQuantityByArticle(article, quantityChange);
-            
-            UpdateStockResponse.Builder responseBuilder = UpdateStockResponse.newBuilder()
-                    .setSuccess(success);
-            
-            if (!success) {
-                responseBuilder.setErrorMessage("Product not found or update failed");
-            }
-            
-            responseObserver.onNext(responseBuilder.build());
-            responseObserver.onCompleted();
-            
-            if (success) {
-                log.info("✅ gRPC: Product stock updated successfully: article={}, change={}", article, quantityChange);
-            } else {
-                log.warn("⚠️ gRPC: Failed to update product stock: article={}", article);
-            }
-            
-        } catch (Exception e) {
-            log.error("❌ gRPC: Error updating product stock: {}", e.getMessage(), e);
-            
-            UpdateStockResponse errorResponse = UpdateStockResponse.newBuilder()
-                    .setSuccess(false)
-                    .setErrorMessage("Error updating stock: " + e.getMessage())
                     .build();
             
             responseObserver.onNext(errorResponse);

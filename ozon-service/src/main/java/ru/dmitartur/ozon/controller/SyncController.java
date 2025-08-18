@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.dmitartur.ozon.entity.SyncCheckpoint;
 import ru.dmitartur.ozon.scheduled.OzonBackfillScheduler;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.HashMap;
@@ -32,16 +32,14 @@ public class SyncController {
         if (checkpoint.isPresent()) {
             SyncCheckpoint cp = checkpoint.get();
             // Конвертируем время в московский timezone для отображения
-            OffsetDateTime lastSyncMoscow = cp.getLastSyncAt().atZoneSameInstant(ZoneId.of("Europe/Moscow")).toOffsetDateTime();
-            OffsetDateTime updatedAtMoscow = cp.getUpdatedAt().atZoneSameInstant(ZoneId.of("Europe/Moscow")).toOffsetDateTime();
-            
+
             response.put("checkpointName", cp.getCheckpointName());
-            response.put("lastSyncAt", lastSyncMoscow); // В московском времени
+            response.put("lastSyncAt", cp.getLastSyncAt()); // В московском времени
             response.put("status", cp.getStatus());
             response.put("ordersProcessed", cp.getOrdersProcessed());
             response.put("syncDurationMs", cp.getSyncDurationMs());
             response.put("errorMessage", cp.getErrorMessage());
-            response.put("updatedAt", updatedAtMoscow); // В московском времени
+            response.put("updatedAt", cp.getUpdatedAt()); // В московском времени
         } else {
             response.put("message", "No sync checkpoint found");
             response.put("status", "NOT_INITIALIZED");
@@ -84,7 +82,7 @@ public class SyncController {
             response.put("recommendation", "Perform initial sync");
         } else {
             SyncCheckpoint cp = checkpoint.get();
-            long hoursSinceLastSync = java.time.Duration.between(cp.getLastSyncAt(), java.time.OffsetDateTime.now()).toHours();
+            long hoursSinceLastSync = java.time.Duration.between(cp.getLastSyncAt(), java.time.LocalDateTime.now()).toHours();
             
             response.put("lastSyncAt", cp.getLastSyncAt());
             response.put("hoursSinceLastSync", hoursSinceLastSync);

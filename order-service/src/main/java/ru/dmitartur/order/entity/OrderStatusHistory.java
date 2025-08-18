@@ -6,7 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import ru.dmitartur.common.enums.OrderStatus;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
 /**
  * История статусов заказа
@@ -35,7 +35,7 @@ public class OrderStatusHistory {
     private OrderStatus previousStatus;
     
     @Column(name = "changed_at", nullable = false)
-    private OffsetDateTime changedAt;
+    private LocalDateTime changedAt;
     
     @Column(name = "reason")
     private String reason;
@@ -47,7 +47,7 @@ public class OrderStatusHistory {
         this.order = order;
         this.status = status;
         this.previousStatus = previousStatus;
-        this.changedAt = OffsetDateTime.now();
+        this.changedAt = LocalDateTime.now();
         this.source = source;
     }
 }

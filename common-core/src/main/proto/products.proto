@@ -10,9 +10,6 @@ option java_outer_classname = "ProductsProto";
 service ProductService {
   // Найти продукт по артикулу
   rpc FindByArticle(FindByArticleRequest) returns (FindByArticleResponse);
-  
-  // Обновить остаток товара по артикулу
-  rpc UpdateStockByArticle(UpdateStockRequest) returns (UpdateStockResponse);
 }
 
 // Запрос поиска продукта по артикулу
@@ -25,18 +22,6 @@ message FindByArticleResponse {
   bool found = 1;
   ProductInfoDto product = 2;
   string error_message = 3;
-}
-
-// Запрос обновления остатка
-message UpdateStockRequest {
-  string article = 1;
-  int32 quantity_change = 2;
-}
-
-// Ответ обновления остатка
-message UpdateStockResponse {
-  bool success = 1;
-  string error_message = 2;
 }
 
 // DTO продукта

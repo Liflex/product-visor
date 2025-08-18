@@ -86,7 +86,7 @@ export const createProduct = async (productData, imageFile) => {
 export const updateProduct = async (id, productData, imageFile) => {
   try {
     const formData = createFormData({ productData }, imageFile, 'image');
-    const response = await uploadRequest(ENDPOINTS.PRODUCTS.BY_ID(id), formData, 'PUT');
+    const response = await uploadRequest(ENDPOINTS.PRODUCTS.BY_ID(id), formData, 'PATCH');
     return response.data;
   } catch (error) {
     console.error(`Error updating product with ID ${id}:`, error);

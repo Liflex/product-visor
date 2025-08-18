@@ -282,18 +282,29 @@ const EditProductNew = () => {
         setPackageQuantity(product.packageInfo.quantityInPackage || '');
       }
       
-      // Set dynamic fields immediately from product
+      // Set dynamic fields immediately from product (null-safe)
       if (product.productAttributeValues && product.productAttributeValues.length > 0) {
         const fields = {};
-        product.productAttributeValues.forEach(attr => {
-          const attrName = attr.attribute.name;
-          if (attr.attribute.multiple) {
+        product.productAttributeValues.forEach(attrValue => {
+          if (!attrValue || !attrValue.attribute) {
+            // Skip malformed entries
+            return;
+          }
+          const attrName = attrValue.attribute?.name;
+          if (!attrName) {
+            return;
+          }
+          const isMultiple = !!attrValue.attribute?.multiple;
+          const value = attrValue.value;
+          if (isMultiple) {
             if (!fields[attrName]) {
               fields[attrName] = [];
             }
-            fields[attrName].push(attr.value);
+            if (value !== undefined && value !== null && value !== '') {
+              fields[attrName].push(value);
+            }
           } else {
-            fields[attrName] = attr.value;
+            fields[attrName] = value ?? '';
           }
         });
         setDynamicFields(fields);
@@ -421,29 +432,42 @@ const EditProductNew = () => {
    * Handle form submission
    */
   const handleFormSubmit = async (formData) => {
+    console.log('🔍 Form submission started with data:', formData);
+    console.log('🔍 Dynamic fields:', dynamicFields);
+    console.log('🔍 Selected category:', selectedCategory);
+    
     const productData = {
       name: formData.name,
-      price: parseFloat(productPrice),
+      price: productPrice === '' || productPrice === null || productPrice === undefined
+        ? null
+        : parseFloat(productPrice),
       article: productArticle,
       barcode: barcode.trim() || null,
-      quantity: productQuantity,
+      quantity: productQuantity === '' || productQuantity === null || productQuantity === undefined
+        ? null
+        : parseInt(productQuantity, 10),
       category: {
         id: selectedCategory.id
       },
       packageInfo: {
-        width: packageWidth ? parseFloat(packageWidth) : null,
-        height: packageHeight ? parseFloat(packageHeight) : null,
-        length: packageLength ? parseFloat(packageLength) : null,
-        weight: packageWeight ? parseFloat(packageWeight) : null,
-        quantityInPackage: packageQuantity ? parseInt(packageQuantity) : null
+        width: packageWidth === '' ? null : parseFloat(packageWidth),
+        height: packageHeight === '' ? null : parseFloat(packageHeight),
+        length: packageLength === '' ? null : parseFloat(packageLength),
+        weight: packageWeight === '' ? null : parseFloat(packageWeight),
+        quantityInPackage: packageQuantity === '' ? null : parseInt(packageQuantity, 10)
       },
-      productAttributeValues: Object.entries(dynamicFields).map(([key, value]) => {
-        const attribute = selectedCategory.attributes.find(attr => attr.name === key);
-        const attrId = attribute.id;
-        
-        if (Array.isArray(value)) {
-          return value.filter(v => v.trim()).map(val => ({
-            id: attrId,
+      productAttributeValues: Object.entries(dynamicFields)
+        .map(([key, value]) => {
+          const attribute = selectedCategory?.attributes?.find(attr => attr.name === key);
+          if (!attribute) return null;
+          const attrId = attribute.id;
+
+          if (Array.isArray(value)) {
+            const cleaned = value
+              .map(v => (typeof v === 'string' ? v.trim() : v))
+              .filter(v => v !== undefined && v !== null && String(v) !== '');
+            return cleaned.map(val => ({
+              id: attrId,
               attribute: {
                 id: attribute.id,
                 name: attribute.name,
@@ -454,10 +478,12 @@ const EditProductNew = () => {
               },
               value: val,
               productId: parseInt(productId)
-          }));
-        } else {
-          if (!value || !value.trim()) return null;
-          
+            }));
+          }
+
+          const single = typeof value === 'string' ? value.trim() : value;
+          if (single === undefined || single === null || String(single) === '') return null;
+
           return {
             id: attrId,
             attribute: {
@@ -468,11 +494,12 @@ const EditProductNew = () => {
               required: attribute.required,
               multiple: attribute.multiple
             },
-            value: value,
+            value: single,
             productId: parseInt(productId)
           };
-        }
-      }).flat().filter(item => item !== null),
+        })
+        .flat()
+        .filter(item => item !== null),
       // Добавляем данные о маркетах как ProductMarketDto
       productMarkets: selectedMarkets.map(m => ({
         id: m.id,
@@ -504,6 +531,7 @@ const EditProductNew = () => {
     }
 
     const success = await editProduct(productId, productData, imageToSend);
+    console.log('🔍 Edit product result:', success);
     if (success) {
       navigate('/all-products');
     }
@@ -566,7 +594,6 @@ const EditProductNew = () => {
               type="number"
               step="0.01"
               placeholder="Введите цену..."
-              required
               value={productPrice}
               onChange={(e) => setProductPrice(e.target.value)}
               error=""

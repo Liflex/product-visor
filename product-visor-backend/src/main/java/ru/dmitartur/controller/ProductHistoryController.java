@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.dmitartur.dto.ProductHistoryDto;
 import ru.dmitartur.service.ProductHistoryService;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -107,8 +107,8 @@ public class ProductHistoryController {
      */
     @GetMapping("/date-range")
     public ResponseEntity<Page<ProductHistoryDto>> getHistoryByDateRange(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime fromDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime toDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         
@@ -141,8 +141,8 @@ public class ProductHistoryController {
     @GetMapping("/reason/{changeReason}/date-range")
     public ResponseEntity<List<ProductHistoryDto>> getHistoryByReasonAndDateRange(
             @PathVariable String changeReason,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime fromDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime toDate) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
         
         log.info("📋 Getting history by reason and date range: reason={}, from={}, to={}", changeReason, fromDate, toDate);
         

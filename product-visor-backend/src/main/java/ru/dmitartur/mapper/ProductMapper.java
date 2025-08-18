@@ -15,6 +15,11 @@ public interface ProductMapper {
     @BeanMapping(qualifiedByName = "enrichPickupProductMarketReverseUrls")
     Product toEntity(ProductDto dto);
 
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "quantity", ignore = true)
+    @Mapping(target = "image", ignore = true)
+    void updateEntityFromDto(ProductDto dto, @MappingTarget Product product);
+
     @AfterMapping
     @Named("enrichPickupProductMarketReverseUrls")
     default void enrichPickupProductMarketReverseUrls(@MappingTarget Product product) {

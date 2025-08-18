@@ -4,7 +4,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
 /**
  * Событие финализации регистрации пользователя с полными данными
@@ -19,5 +19,6 @@ public class UserRegistrationSubmitEvent {
     private String firstName;
     private String lastName;
     private String email;
-    private OffsetDateTime eventTime;
+    private LocalDateTime eventTime;
 }
+

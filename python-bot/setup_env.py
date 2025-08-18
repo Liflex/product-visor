@@ -90,3 +90,4 @@ if __name__ == "__main__":
     else:
         print("\n❌ Настройка не завершена")
         sys.exit(1)
+
