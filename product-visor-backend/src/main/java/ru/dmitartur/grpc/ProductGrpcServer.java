@@ -72,7 +72,7 @@ public class ProductGrpcServer extends ProductServiceGrpc.ProductServiceImplBase
                 .setName(product.getName() != null ? product.getName() : "")
                 .setArticle(product.getArticle() != null ? product.getArticle() : "")
                 .setSku("") // SKU не используется в Product entity
-                .setStock(product.getQuantity() != null ? product.getQuantity() : 0)
+                .setStock(0) // TODO: рассчитать суммарный остаток по ProductStock
                 .setBarcode(product.getBarcode() != null ? product.getBarcode() : "")
                 .setDescription("") // Description не используется в Product entity
                 .setPrice(product.getPrice() != null ? product.getPrice().toString() : "0")

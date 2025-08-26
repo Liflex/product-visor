@@ -4,18 +4,18 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import ru.dmitartur.entity.Product;
-import ru.dmitartur.mapper.ProductMapper;
 import ru.dmitartur.repository.ProductRepository;
-import ru.dmitartur.interceptor.ProductHistoryInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.dmitartur.common.utils.JwtUtil;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -24,7 +24,7 @@ public class ProductService {
     private static final Logger logger = LoggerFactory.getLogger(ProductService.class);
     
     private final ProductRepository productRepository;
-    private final ProductHistoryInterceptor productHistoryInterceptor;
+    // private final ProductHistoryInterceptor productHistoryInterceptor; // Quantity tracking moved to ProductStock level
 
     /**
      * Генерирует уникальный 12-значный артикул
@@ -48,6 +48,16 @@ public class ProductService {
                 entity.setArticle(generateArticle());
                 logger.info("Generated article for new product: {}", entity.getArticle());
             }
+            // Проставляем владельца и компанию из контекста
+            try {
+                entity.setOwnerUserId(JwtUtil.getRequiredOwnerId());
+            } catch (IllegalStateException e) {
+                logger.error("❌ Missing or invalid user_id in JWT: {}", e.getMessage(), e);
+                throw e;
+            }
+            JwtUtil.resolveEffectiveCompanyId().ifPresent(cid -> {
+                try { entity.setCompanyId(java.util.UUID.fromString(cid)); } catch (Exception ignored) {}
+            });
         } else {
             logger.info("💾 Updating product: id={}, name={}", entity.getId(), entity.getName());
         }
@@ -58,13 +68,13 @@ public class ProductService {
     }
 
     public Product update(Product entity) {
-        logger.info("🔄 Updating product: id={}, name={}, quantity={}", 
-            entity.getId(), entity.getName(), entity.getQuantity());
+        logger.info("🔄 Updating product: id={}, name={}", 
+            entity.getId(), entity.getName());
         
         try {
             Product savedProduct = productRepository.save(entity);
-            logger.info("✅ Product updated successfully: id={}, name={}, quantity={}", 
-                savedProduct.getId(), savedProduct.getName(), savedProduct.getQuantity());
+            logger.info("✅ Product updated successfully: id={}, name={}", 
+                savedProduct.getId(), savedProduct.getName());
             return savedProduct;
         } catch (Exception e) {
             logger.error("❌ Error updating product: id={}, error={}", entity.getId(), e.getMessage(), e);
@@ -72,31 +82,28 @@ public class ProductService {
         }
     }
 
-    /**
-     * Compute new quantity based on delta (does not persist)
-     */
-    public int computeQuantityWithDelta(int currentQuantity, int quantityDelta) {
-        int base = Math.max(0, currentQuantity);
-        int newQuantity = base + quantityDelta;
-        return Math.max(0, newQuantity);
-    }
-
-    public void trackQuantityChange(Product product, int oldQuantity, int newQuantity) {
-        productHistoryInterceptor.trackQuantityChange(product, oldQuantity, newQuantity);
-    }
+    // Количество на уровне Product больше не используется; остатки — в ProductStock
 
     public List<Product> findAll() {
-        logger.debug("📋 Fetching all products from database");
-        List<Product> products = productRepository.findAll();
-        logger.debug("✅ Found {} products", products.size());
-        return products;
+        logger.debug("📋 Fetching all products for current owner");
+        var ownerIdOpt = JwtUtil.getCurrentId();
+        if (ownerIdOpt.isEmpty()) return List.of();
+        UUID ownerId = JwtUtil.getRequiredOwnerId();
+        return productRepository.findByOwnerUserId(ownerId, org.springframework.data.domain.PageRequest.of(0, Integer.MAX_VALUE)).getContent();
     }
 
     public Page<Product> findAll(Pageable pageable) {
-        logger.debug("📋 Fetching products page: page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
-        Page<Product> page = productRepository.findAll(pageable);
-        logger.debug("✅ Page loaded: totalElements={}, totalPages={}", page.getTotalElements(), page.getTotalPages());
-        return page;
+        logger.debug("📋 Fetching products page for current owner: page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
+        var ownerIdOpt = JwtUtil.getCurrentId();
+        if (ownerIdOpt.isEmpty()) return Page.empty(pageable);
+        UUID ownerId = JwtUtil.getRequiredOwnerId();
+        return productRepository.findByOwnerUserId(ownerId, pageable);
+    }
+
+    public Page<Product> findAllByCompanyAndOwner(UUID companyId, UUID ownerId, Pageable pageable) {
+        logger.debug("📋 Fetching products for company: {} and owner: {}, page={}, size={}", 
+                companyId, ownerId, pageable.getPageNumber(), pageable.getPageSize());
+        return productRepository.findByCompanyIdAndOwnerUserId(companyId, ownerId, pageable);
     }
 
     public Optional<Product> findByBarcode(String barcode) {
@@ -154,6 +161,32 @@ public class ProductService {
     public Page<Product> search(String query, Pageable pageable) {
         logger.debug("🔎 Searching products by query: '{}'", query);
         return productRepository.searchFullText(query, pageable);
+    }
+
+    /**
+     * Получить товары по списку ID
+     */
+    public List<Product> getProductsByIds(List<Long> productIds) {
+        logger.debug("🔍 Fetching products by IDs: {}", productIds);
+        List<Product> products = productRepository.findAllById(productIds);
+        logger.info("✅ Found {} products by IDs", products.size());
+        return products;
+    }
+
+    /**
+     * Проверить, что товар принадлежит текущему пользователю
+     */
+    public Product validateProductOwnership(Long productId) {
+        UUID userId = JwtUtil.getRequiredOwnerId();
+        
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Товар не найден"));
+        
+        if (!product.getOwnerUserId().equals(userId)) {
+            throw new RuntimeException("Товар не принадлежит пользователю");
+        }
+        
+        return product;
     }
 
 }

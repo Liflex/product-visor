@@ -5,6 +5,14 @@
 
 import axios from 'axios';
 import { API_CONFIG } from '../config/api-config.js';
+import { clearAuthData, redirectToLogin } from './auth-utils.js';
+
+// Simple in-memory auth state
+let __auth = { token: null, companyId: null };
+export const setAuthToken = (token) => { __auth.token = token; };
+export const setCompanyId = (companyId) => { __auth.companyId = companyId; };
+export const getAuthToken = () => { return __auth.token; };
+export const getCompanyId = () => { return __auth.companyId; };
 
 /**
  * Create axios instance with default configuration for product-visor-backend
@@ -39,8 +47,22 @@ const requestInterceptor = (config) => {
       _t: Date.now(),
     };
   }
+  // Attach auth headers
+  if (__auth.token) {
+    config.headers = {
+      ...config.headers,
+      Authorization: `Bearer ${__auth.token}`,
+    };
+  }
+  if (__auth.companyId) {
+    config.headers = {
+      ...config.headers,
+      'X-Company-Id': __auth.companyId,
+    };
+  }
   
-  console.log(`Making ${config.method?.toUpperCase()} request to ${config.url}`);
+  const full = (config.baseURL ? config.baseURL.replace(/\/$/, '') : '') + (config.url || '');
+  console.log(`Making ${config.method?.toUpperCase()} request to ${full}`);
   return config;
 };
 
@@ -72,7 +94,18 @@ const responseErrorInterceptor = (error) => {
       case 400:
         throw new Error(`Bad Request: ${data?.message || 'Invalid request data'}`);
       case 401:
-        throw new Error('Unauthorized: Please check your credentials');
+        // Очищаем токен и перенаправляем на страницу входа
+        clearAuthData();
+        setAuthToken(null);
+        setCompanyId(null);
+        
+        // Перенаправляем только если мы не на странице логина
+        if (window.location.pathname !== '/login') {
+          // Используем принудительное перенаправление
+          window.location.href = '/login';
+        }
+        
+        throw new Error('Unauthorized: Please log in again');
       case 403:
         throw new Error('Forbidden: You do not have permission to perform this action');
       case 404:

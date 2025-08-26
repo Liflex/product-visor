@@ -11,6 +11,7 @@ import ru.dmitartur.client.kafka.TelegramOutgoingProducer;
 import ru.dmitartur.common.events.StartCommandEvent;
 import ru.dmitartur.common.events.UserRegistrationSubmitEvent;
 
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
 /**

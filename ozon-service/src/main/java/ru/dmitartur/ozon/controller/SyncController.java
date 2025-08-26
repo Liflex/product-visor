@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/v1/sync")
+@RequestMapping("/api/ozon/sync")
 @RequiredArgsConstructor
 public class SyncController {
 
@@ -48,49 +48,4 @@ public class SyncController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Принудительно запустить синхронизацию
-     */
-    @PostMapping("/force")
-    public ResponseEntity<Map<String, Object>> forceSync() {
-        Map<String, Object> response = new HashMap<>();
-        
-        try {
-            ozonBackfillScheduler.forceSync();
-            response.put("message", "Force sync started successfully");
-            response.put("status", "STARTED");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            response.put("message", "Failed to start force sync: " + e.getMessage());
-            response.put("status", "ERROR");
-            return ResponseEntity.internalServerError().body(response);
-        }
-    }
-
-    /**
-     * Проверить необходимость синхронизации
-     */
-    @GetMapping("/check")
-    public ResponseEntity<Map<String, Object>> checkSyncNeeded() {
-        Optional<SyncCheckpoint> checkpoint = ozonBackfillScheduler.getLastSyncInfo();
-        
-        Map<String, Object> response = new HashMap<>();
-        
-        if (checkpoint.isEmpty()) {
-            response.put("syncNeeded", true);
-            response.put("reason", "No sync checkpoint found");
-            response.put("recommendation", "Perform initial sync");
-        } else {
-            SyncCheckpoint cp = checkpoint.get();
-            long hoursSinceLastSync = java.time.Duration.between(cp.getLastSyncAt(), java.time.LocalDateTime.now()).toHours();
-            
-            response.put("lastSyncAt", cp.getLastSyncAt());
-            response.put("hoursSinceLastSync", hoursSinceLastSync);
-            response.put("syncNeeded", hoursSinceLastSync > 24); // 24 часа - максимальный разрыв
-            response.put("reason", hoursSinceLastSync > 24 ? "Large sync gap detected" : "Sync is up to date");
-            response.put("recommendation", hoursSinceLastSync > 24 ? "Perform catch-up sync" : "No action needed");
-        }
-        
-        return ResponseEntity.ok(response);
-    }
 }

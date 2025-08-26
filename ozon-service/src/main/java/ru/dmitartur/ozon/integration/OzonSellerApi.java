@@ -1,6 +1,7 @@
 package ru.dmitartur.ozon.integration;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import ru.dmitartur.library.marketplace.integration.BaseMarketplaceApi;
 import ru.dmitartur.ozon.config.FeignOzonConfig;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;

@@ -1,0 +1,64 @@
+server:
+  port: 9091
+
+spring:
+  application:
+    name: yandex-service
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/yandex_service
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  
+  flyway:
+    enabled: true
+    validate-on-migrate: false
+    out-of-order: true
+    ignore-migration-patterns: "*:ignored"
+    schemas: marketplace
+
+# Yandex Market API Configuration
+yandex:
+  base-url: https://api.partner.market.yandex.ru
+  client-id: ${YANDEX_CLIENT_ID:your-client-id}
+  client-secret: ${YANDEX_CLIENT_SECRET:your-client-secret}
+  default-warehouse-id: ${YANDEX_DEFAULT_WAREHOUSE_ID:}
+  max-retry-attempts: 5
+  retry-delay-ms: 1000
+  retry-multiplier: 2.0
+
+# Application Configuration
+app:
+  sync:
+    enabled: true
+    checkpoint-name: YANDEX_ORDERS
+    max-gap-minutes: 60
+    interval-minutes: 30
+
+# Management endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+# Logging
+logging:
+  level:
+    ru.dmitartur.yandex: DEBUG
+    org.springframework.cloud.openfeign: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"

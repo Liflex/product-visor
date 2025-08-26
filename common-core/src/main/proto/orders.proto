@@ -83,6 +83,7 @@ message OrderDto {
 // Запрос для upsert заказов
 message UpsertOrdersRequest {
   repeated OrderDto orders = 1;
+  string company_id = 2; // Идентификатор компании для мультитенантности
 }
 
 // Ответ на upsert заказов

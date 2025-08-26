@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,16 +13,18 @@ import ru.dmitartur.common.grpc.OrderInternalServiceGrpc;
 import ru.dmitartur.common.grpc.UpsertOrdersRequest;
 import ru.dmitartur.common.grpc.UpsertOrdersResponse;
 import ru.dmitartur.common.dto.OrderDto;
-import ru.dmitartur.ozon.dto.DateRangeDto;
+import ru.dmitartur.library.marketplace.service.BaseMarketplaceService;
+import ru.dmitartur.common.dto.marketplace.DateRangeDto;
 import ru.dmitartur.ozon.mapper.OzonOrderMapper;
 import ru.dmitartur.ozon.retry.OzonRetryService;
+import ru.dmitartur.common.security.CompanyContextHolder;
 
 import java.util.List;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class OzonService {
+public class OzonService implements BaseMarketplaceService {
     private final OzonSellerApi api;
     private final OrderInternalServiceGrpc.OrderInternalServiceBlockingStub orderStub;
     private final OzonOrderMapper ozonOrderMapper;
@@ -133,6 +134,8 @@ public class OzonService {
                             .addAllOrders(orderDtos.stream()
                                     .map(this::convertOrderDtoToGrpc)
                                     .toList())
+                            .setCompanyId(CompanyContextHolder.getCompanyId() != null ? 
+                                    CompanyContextHolder.getCompanyId() : "")
                             .build();
                     
                     UpsertOrdersResponse response = orderStub.upsertOrdersDto(request);
@@ -225,6 +228,8 @@ public class OzonService {
                             .addAllOrders(orderDtos.stream()
                                     .map(this::convertOrderDtoToGrpc)
                                     .toList())
+                            .setCompanyId(CompanyContextHolder.getCompanyId() != null ? 
+                                    CompanyContextHolder.getCompanyId() : "")
                             .build();
                     
                     UpsertOrdersResponse response = orderStub.upsertOrdersDto(request);
@@ -277,7 +282,8 @@ public class OzonService {
      * Комбинированная синхронизация заказов FBO и FBS с Ozon API
      * Сначала синхронизирует FBO, затем FBS заказы
      */
-    public int backfillAllOrders(DateRangeDto range, int pageSize) {
+    @Override
+    public Integer backfillAllOrders(DateRangeDto range, int pageSize) {
         log.info("🚀 Starting combined FBO + FBS orders backfill from {} to {}", range.getFrom(), range.getTo());
         
         int totalFboUpserted = 0;
@@ -395,6 +401,23 @@ public class OzonService {
                 .setPrice(itemDto.getPrice() != null ? itemDto.getPrice().toString() : "0")
                 .setSku(itemDto.getSku() != null ? itemDto.getSku() : "")
                 .build();
+    }
+    
+    @Override
+    public String getMarketplaceName() {
+        return "Ozon";
+    }
+    
+    @Override
+    public boolean testConnection() {
+        try {
+            // Простой тест подключения - попробуем получить список складов
+            JsonNode response = api.listWarehouses();
+            return response != null && !response.has("error");
+        } catch (Exception e) {
+            log.error("❌ Connection test failed: {}", e.getMessage());
+            return false;
+        }
     }
 }
 

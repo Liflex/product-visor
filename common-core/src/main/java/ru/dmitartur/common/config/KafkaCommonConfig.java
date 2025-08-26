@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -62,6 +63,30 @@ public class KafkaCommonConfig {
     @ConditionalOnMissingBean(name = "stringKafkaTemplate")
     public KafkaTemplate<String, String> stringKafkaTemplate() { 
         return new KafkaTemplate<>(stringProducerFactory()); 
+    }
+
+    /**
+     * ProducerFactory для JSON сообщений (StockSyncRequest)
+     */
+    @Bean
+    @ConditionalOnMissingBean(name = "jsonProducerFactory")
+    public ProducerFactory<String, Object> jsonProducerFactory(ObjectMapper objectMapper) {
+        Map<String, Object> configProps = new HashMap<>();
+        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        
+        JsonSerializer<Object> jsonSerializer = new JsonSerializer<>(objectMapper);
+        return new DefaultKafkaProducerFactory<>(configProps, new StringSerializer(), jsonSerializer);
+    }
+
+    /**
+     * KafkaTemplate для JSON сообщений (StockSyncRequest)
+     */
+    @Bean
+    @ConditionalOnMissingBean(name = "jsonKafkaTemplate")
+    public KafkaTemplate<String, Object> jsonKafkaTemplate(ObjectMapper objectMapper) { 
+        return new KafkaTemplate<>(jsonProducerFactory(objectMapper)); 
     }
 }
 

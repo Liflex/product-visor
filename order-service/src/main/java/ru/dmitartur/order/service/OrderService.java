@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
+import java.util.UUID;
 import java.time.ZonedDateTime;
 
 @Slf4j
@@ -31,9 +32,11 @@ public class OrderService {
      * Получить все заказы с пагинацией
      */
     public Page<Order> findAll(Pageable pageable) {
-        log.debug("📋 Fetching orders with pagination: page={}, size={}", 
-                 pageable.getPageNumber(), pageable.getPageSize());
-        Page<Order> page = orderRepository.findAll(pageable);
+        log.debug("📋 Fetching orders for current owner with pagination: page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
+        var ownerIdOpt = ru.dmitartur.common.utils.JwtUtil.getCurrentId();
+        if (ownerIdOpt.isEmpty()) return Page.empty(pageable);
+        UUID ownerId = ru.dmitartur.common.utils.JwtUtil.getRequiredOwnerId();
+        Page<Order> page = orderRepository.findByOwnerUserId(ownerId, pageable);
         log.debug("✅ Orders page loaded: totalElements={}, totalPages={}", 
                  page.getTotalElements(), page.getTotalPages());
         return page;
@@ -45,7 +48,10 @@ public class OrderService {
     public Page<Order> findByMarket(ru.dmitartur.common.enums.Market market, Pageable pageable) {
         log.debug("📋 Fetching orders by market: {} with pagination: page={}, size={}", 
                  market, pageable.getPageNumber(), pageable.getPageSize());
-        Page<Order> page = orderRepository.findByMarket(market, pageable);
+        var ownerIdOpt = ru.dmitartur.common.utils.JwtUtil.getCurrentId();
+        if (ownerIdOpt.isEmpty()) return Page.empty(pageable);
+        long ownerId = ru.dmitartur.common.utils.JwtUtil.getRequiredOwnerIdLong();
+        Page<Order> page = orderRepository.findByMarketAndOwnerUserId(market, ownerId, pageable);
         log.debug("✅ Orders by market loaded: market={}, totalElements={}, totalPages={}", 
                  market, page.getTotalElements(), page.getTotalPages());
         return page;
@@ -191,7 +197,10 @@ public class OrderService {
             log.warn("❌ Invalid date format: dateFrom={}, dateTo={}", dateFrom, dateTo);
         }
         
-        Page<Order> page = orderRepository.findByFilters(status, fromDate, toDate, pageable);
+        var ownerIdOpt = ru.dmitartur.common.utils.JwtUtil.getCurrentId();
+        if (ownerIdOpt.isEmpty()) return Page.empty(pageable);
+        long ownerId = ru.dmitartur.common.utils.JwtUtil.getRequiredOwnerIdLong();
+        Page<Order> page = orderRepository.findByFiltersAndOwner(ownerId, status, fromDate, toDate, pageable);
         Page<OrderDto> dtoPage = page.map(orderMapper::toDto);
         
         log.debug("✅ Orders DTOs with filters loaded: totalElements={}, totalPages={}", 
@@ -221,7 +230,10 @@ public class OrderService {
             log.warn("❌ Invalid date format: dateFrom={}, dateTo={}", dateFrom, dateTo);
         }
         
-        Page<Order> page = orderRepository.findByMarketAndFilters(market, status, fromDate, toDate, pageable);
+        var ownerIdOpt = ru.dmitartur.common.utils.JwtUtil.getCurrentId();
+        if (ownerIdOpt.isEmpty()) return Page.empty(pageable);
+        long ownerId = ru.dmitartur.common.utils.JwtUtil.getRequiredOwnerIdLong();
+        Page<Order> page = orderRepository.findByMarketAndFiltersAndOwner(market, ownerId, status, fromDate, toDate, pageable);
         Page<OrderDto> dtoPage = page.map(orderMapper::toDto);
         log.debug("✅ Orders DTOs by market with filters loaded: market={}, totalElements={}, totalPages={}", 
                  market, dtoPage.getTotalElements(), dtoPage.getTotalPages());
@@ -233,7 +245,10 @@ public class OrderService {
      */
     public Optional<OrderDto> findByPostingNumberDto(String postingNumber) {
         log.debug("🔍 Searching order DTO by posting number: {}", postingNumber);
-        Optional<Order> order = orderRepository.findByPostingNumber(postingNumber);
+        var ownerIdOpt = ru.dmitartur.common.utils.JwtUtil.getCurrentId();
+        if (ownerIdOpt.isEmpty()) return Optional.empty();
+        long ownerId = ru.dmitartur.common.utils.JwtUtil.getRequiredOwnerIdLong();
+        Optional<Order> order = orderRepository.findByPostingNumberAndOwnerUserId(postingNumber, ownerId);
         
         if (order.isPresent()) {
             log.debug("✅ Order DTO found by posting number: {} -> id={}", postingNumber, order.get().getId());
@@ -285,6 +300,9 @@ public class OrderService {
             return Optional.empty();
         }
     }
+
+    // Helpers for controller-level conversions
+    public OrderMapper getOrderMapper() { return orderMapper; }
 }
 
 

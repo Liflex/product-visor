@@ -129,7 +129,6 @@ public class AuthorizationServerConfig {
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .authorizationGrantType(AuthorizationGrantType.PASSWORD)
                 .redirectUri("http://127.0.0.1:8080/login/oauth2/code/spring-auth-server")
                 .redirectUri("http://localhost:8080/login/oauth2/code/spring-auth-server")
                 .redirectUri("http://127.0.0.1:8080/authorized")
@@ -140,8 +139,9 @@ public class AuthorizationServerConfig {
                         .requireAuthorizationConsent(true)
                         .build())
                 .tokenSettings(TokenSettings.builder()
+                        .reuseRefreshTokens(true)
                         .accessTokenTimeToLive(Duration.ofMinutes(30))
-                        .refreshTokenTimeToLive(Duration.ofDays(1))
+                        .refreshTokenTimeToLive(Duration.ofDays(30))
                         .build())
                 .build();
 

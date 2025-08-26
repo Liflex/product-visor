@@ -5,7 +5,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import ru.dmitartur.dto.ProductDto;
 import ru.dmitartur.dto.ProductUploadRequest;
-import ru.dmitartur.dto.StockUpdateDto;
 import ru.dmitartur.entity.Product;
 import ru.dmitartur.mapper.ProductMapper;
 import ru.dmitartur.service.ProductService;
@@ -19,6 +18,8 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+import ru.dmitartur.common.utils.JwtUtil;
 
 
 
@@ -115,7 +116,6 @@ public class ProductController {
         }
 
         Product existing = existingOpt.get();
-        int oldQuantity = existing.getQuantity() != null ? existing.getQuantity() : 0;
 
         // Частично переносим поля
         mapper.updateEntityFromDto(incomingDto, existing);
@@ -125,19 +125,11 @@ public class ProductController {
             existing.setImage(incomingImage);
         }
 
-        // Если пришёл quantity — нормализуем и применяем, но не сохраняем дважды
-        if (incomingDto.getQuantity() != null) {
-            int normalized = Math.max(0, incomingDto.getQuantity());
-            existing.setQuantity(normalized);
-        }
+        // Поле quantity более не поддерживается на уровне Product; используются ProductStock
 
         Product saved = service.update(existing);
 
-        // Отслеживаем изменение количества, если оно было
-        int newQuantity = saved.getQuantity() != null ? saved.getQuantity() : 0;
-        if (incomingDto.getQuantity() != null && newQuantity != oldQuantity) {
-            service.trackQuantityChange(saved, oldQuantity, newQuantity);
-        }
+        // История/события по остаткам обрабатываются на уровне ProductStock
 
         return ResponseEntity.ok(mapper.toDto(saved));
     }
@@ -149,7 +141,26 @@ public class ProductController {
     ) {
         logger.info("📋 Fetching products with pagination: page={}, size={}", page, size);
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").ascending());
-        Page<Product> productPage = service.findAll(pageable);
+        
+        // Получаем userId и companyId из JWT
+        UUID userId = JwtUtil.getRequiredOwnerId();
+        var companyIdOpt = JwtUtil.resolveEffectiveCompanyId();
+        
+        Page<Product> productPage;
+        if (companyIdOpt.isPresent()) {
+            try {
+                UUID companyId = UUID.fromString(companyIdOpt.get());
+                logger.info("📋 Fetching products for company: {} and user: {}", companyId, userId);
+                productPage = service.findAllByCompanyAndOwner(companyId, userId, pageable);
+            } catch (IllegalArgumentException e) {
+                logger.warn("Invalid company ID format: {}, falling back to user-only products", companyIdOpt.get());
+                productPage = service.findAll(pageable);
+            }
+        } else {
+            logger.info("📋 No company selected, fetching all products for user: {}", userId);
+            productPage = service.findAll(pageable);
+        }
+        
         Page<ProductDto> dtos = productPage.map(mapper::toDto);
         return ResponseEntity.ok(dtos);
     }

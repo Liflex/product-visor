@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table
@@ -32,7 +33,7 @@ public class Product {
     @Column(unique = true)
     private String barcode;
 
-    private Integer quantity = 0; // количество на складе
+    // Количество по складам хранится в сущности ProductStock
 
     @ManyToOne
     private Category category;
@@ -51,6 +52,17 @@ public class Product {
     @JsonManagedReference
     private List<ProductMarket> productMarkets;
 
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonManagedReference
+    private List<ProductStock> productStocks;
+
+    // Владелец и компания
+    @Column(name = "owner_user_id")
+    private UUID ownerUserId;
+
+    @Column(name = "company_id")
+    private UUID companyId;
+
     @PrePersist
     @PreUpdate
     private void prepareAttributeValues() {
@@ -59,6 +71,18 @@ public class Product {
         }
         if (productMarkets != null) {
             productMarkets.forEach(pm -> pm.setProduct(this));
+        }
+        if (productStocks != null) {
+            // Проставляем обратные ссылки для каскадного сохранения остатков
+            for (var stock : productStocks) {
+                if (stock != null) {
+                    stock.setProduct(this);
+                    // Наследуем владельца/компанию если они установлены на товаре
+                    if (this.ownerUserId != null && stock.getUserId() == null) {
+                        stock.setUserId(this.ownerUserId);
+                    }
+                }
+            }
         }
     }
 

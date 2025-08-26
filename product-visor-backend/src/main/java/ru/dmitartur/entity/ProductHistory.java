@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
 import org.springframework.data.annotation.CreatedDate;
 
 import java.time.LocalDateTime;
@@ -44,7 +45,7 @@ public class ProductHistory {
     private String sourceId; // posting_number, user_id, etc.
     
     @Column(name = "created_at", nullable = false)
-    @CreatedDate
+    @CreationTimestamp
     private LocalDateTime createdAt;
     
     @Column(name = "metadata")

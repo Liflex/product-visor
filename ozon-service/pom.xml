@@ -14,9 +14,10 @@
     </parent>
 
     <properties>
-        <java.version>17</java.version>
-        <lombok.version>1.18.30</lombok.version>
-        <spring-cloud-openfeign.version>4.0.4</spring-cloud-openfeign.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <lombok.version>1.18.34</lombok.version>
     </properties>
 
     <dependencies>
@@ -60,7 +61,6 @@
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-openfeign</artifactId>
-            <version>${spring-cloud-openfeign.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -81,6 +81,12 @@
         <dependency>
             <groupId>ru.dmitartur</groupId>
             <artifactId>common-core</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+        <!-- Library Marketplace -->
+        <dependency>
+            <groupId>ru.dmitartur</groupId>
+            <artifactId>library-marketplace</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
         <!-- gRPC runtime for client stub -->

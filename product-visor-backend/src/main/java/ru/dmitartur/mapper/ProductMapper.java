@@ -6,7 +6,7 @@ import ru.dmitartur.entity.ProductMarket;
 import org.mapstruct.*;
 import org.mapstruct.factory.Mappers;
 
-@Mapper(componentModel = "spring", uses = {CategoryMapper.class, ProductAttributeValueMapper.class, MarketMapper.class, ProductMarketMapper.class})
+@Mapper(componentModel = "spring", uses = {CategoryMapper.class, ProductAttributeValueMapper.class, MarketMapper.class, ProductMarketMapper.class, ProductStockMapper.class})
 public interface ProductMapper {
     ProductMapper INSTANCE = Mappers.getMapper(ProductMapper.class);
 
@@ -16,7 +16,6 @@ public interface ProductMapper {
     Product toEntity(ProductDto dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @Mapping(target = "quantity", ignore = true)
     @Mapping(target = "image", ignore = true)
     void updateEntityFromDto(ProductDto dto, @MappingTarget Product product);
 

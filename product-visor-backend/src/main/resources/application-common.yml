@@ -9,10 +9,15 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+    show-sql: false
   flyway:
     enabled: true
     baseline-on-migrate: true
     validate-on-migrate: true
+    locations: classpath:db/migration
+    schemas: visor
+    ignore-migration-patterns: "*:ignored"
+    default-schema: visor
 
 # Общие настройки OAuth2
 oauth2:
@@ -63,5 +68,5 @@ logging:
   level:
     org.springframework.kafka: INFO
     org.apache.kafka: INFO
-    org.springframework.security: DEBUG
-    org.springframework.security.oauth2: DEBUG
+    org.springframework.security: INFO
+    org.springframework.security.oauth2: INFO

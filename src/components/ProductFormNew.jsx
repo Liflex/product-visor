@@ -10,6 +10,7 @@ import { createProduct } from '../services/productService';
 import { getCategories } from '../services/categoryService';
 import { API_URLS } from '../config/api-config.js';
 import axios from 'axios'; // Added axios import
+import ProductStockEditor from './ProductStockEditor.jsx';
 
 const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, locationState = null }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -31,6 +32,9 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
     const [packageWeight, setPackageWeight] = useState('');
     const [packageQuantity, setPackageQuantity] = useState('');
 
+    // Остатки продуктов
+    const [productStocks, setProductStocks] = useState([]);
+
     // Функция для генерации уникального 12-значного артикула
     const generateArticle = () => {
         const timestamp = Date.now().toString();
@@ -38,6 +42,13 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
         const article = (timestamp + random).slice(-12);
         return article;
   };
+
+    // Обработчик изменения остатков
+    const handleStocksChange = (newStocks) => {
+        setProductStocks(newStocks);
+    };
+
+    // Каскадное сохранение: остатки передаем вместе с данными товара
 
     // Инициализация формы при копировании товара или переходе с главной страницы
   useEffect(() => {
@@ -199,7 +210,7 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
     const handleSubmit = async (event) => {
         event.preventDefault();
         
-        // Собираем данные о товаре
+        // Собираем данные о товаре (включая остатки для каскадного сохранения)
     const productData = {
             name: productName,
             price: parseFloat(productPrice),
@@ -242,7 +253,14 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
             value: value
           };
         }
-            }).flat()
+            }).flat(),
+      // Остатки товара для каскадного сохранения
+      productStocks: productStocks.map(stock => ({
+        warehouseId: stock.warehouseId,
+        stockType: stock.stockType,
+        quantity: stock.quantity,
+        notes: stock.notes
+      }))
         };
 
         // Преобразуем данные в JSON строку
@@ -259,6 +277,8 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
                 }
             });
             console.log('Product created successfully:', response.data);
+            
+            const createdProduct = response.data;
             alert('Товар успешно добавлен!');
 
             // Очищаем только уникальные поля, остальные оставляем заполненными
@@ -268,6 +288,9 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
             // Генерируем новый артикул для следующего товара
             const newArticle = generateArticle();
             setProductArticle(newArticle);
+            
+            // Очищаем остатки
+            setProductStocks([]);
             
             // Остальные поля оставляем заполненными для создания похожего товара
             // setProductPrice(''); // Оставляем цену
@@ -283,7 +306,7 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
             // setDynamicFields({}); // Оставляем атрибуты
             
             if (onProductCreated) {
-                onProductCreated(response.data);
+                onProductCreated(createdProduct);
             }
         } catch (error) {
             console.error('Error creating product:', error);
@@ -477,6 +500,13 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
                         </div>
                     </div>
 
+                    {/* Управление остатками */}
+                    <ProductStockEditor
+                        productStocks={productStocks}
+                        onStocksChange={handleStocksChange}
+                        isEditMode={false}
+                    />
+
                     {/* Изображение */}
                     <div>
                         <label htmlFor="image" className="block text-sm font-medium text-gray-300">
@@ -622,6 +652,14 @@ const ProductFormNew = ({ categories, onProductCreated, initialProduct = null, l
                             })}
                         </div>
                     )}
+
+                    {/* Product Stock Management */}
+                    <ProductStockEditor
+                        productStocks={productStocks}
+                        onStocksChange={handleStocksChange}
+                        isEditMode={false}
+                        productId={null}
+                    />
 
                     <div className="flex justify-end space-x-4">
             <button

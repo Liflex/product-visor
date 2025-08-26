@@ -16,6 +16,18 @@ export const MICROSERVICES = {
   OZON_SERVICE: {
     BASE_URL: '', // Используем прокси Vite
     API_VERSION: null
+  },
+  YANDEX_SERVICE: {
+    BASE_URL: '', // Используем прокси Vite
+    API_VERSION: null
+  },
+  CLIENT: {
+    BASE_URL: 'http://192.168.1.59:9089',
+    API_VERSION: null
+  },
+  AUTH: {
+    BASE_URL: 'http://192.168.1.59:9099',
+    API_VERSION: null
   }
 };
 
@@ -80,7 +92,28 @@ export const ENDPOINTS = {
   OZON: {
     BASE: '/ozon',
     ORDERS_FBO_LIST: '/ozon/orders/fbo/list',
-    ORDERS_FBO_BACKFILL: '/ozon/orders/fbo/backfill'
+    ORDERS_FBO_BACKFILL: '/ozon/orders/fbo/backfill',
+    CREDENTIALS: '/ozon/credentials'
+  },
+  YANDEX: {
+    BASE: '/yandex',
+    ORDERS_FBO_LIST: '/yandex/orders/fbo/list',
+    ORDERS_FBO_BACKFILL: '/yandex/orders/fbo/backfill',
+    CREDENTIALS: '/yandex/credentials'
+  },
+  COMPANIES: {
+    BASE: '/companies',
+    BY_ID: (id) => `/companies/${id}`,
+    CURRENT: '/companies/current',
+    AVATAR: (id) => `/companies/${id}/avatar`
+  },
+  PROFILE: {
+    ME: '/profile/me',
+    UPDATE: '/profile',
+    AVATAR: '/profile/avatar'
+  },
+  AUTH: {
+    LOGIN: '/auth/login'
   }
 };
 
@@ -109,7 +142,28 @@ export const API_URLS = {
   OZON: {
     BASE: () => buildApiUrl(ENDPOINTS.OZON.BASE, 'OZON_SERVICE'),
     ORDERS_FBO_LIST: () => buildApiUrl(ENDPOINTS.OZON.ORDERS_FBO_LIST, 'OZON_SERVICE'),
-    ORDERS_FBO_BACKFILL: () => buildApiUrl(ENDPOINTS.OZON.ORDERS_FBO_BACKFILL, 'OZON_SERVICE')
+    ORDERS_FBO_BACKFILL: () => buildApiUrl(ENDPOINTS.OZON.ORDERS_FBO_BACKFILL, 'OZON_SERVICE'),
+    CREDENTIALS: () => buildApiUrl(ENDPOINTS.OZON.CREDENTIALS, 'OZON_SERVICE')
+  },
+  YANDEX: {
+    BASE: () => buildApiUrl(ENDPOINTS.YANDEX.BASE, 'YANDEX_SERVICE'),
+    ORDERS_FBO_LIST: () => buildApiUrl(ENDPOINTS.YANDEX.ORDERS_FBO_LIST, 'YANDEX_SERVICE'),
+    ORDERS_FBO_BACKFILL: () => buildApiUrl(ENDPOINTS.YANDEX.ORDERS_FBO_BACKFILL, 'YANDEX_SERVICE'),
+    CREDENTIALS: () => buildApiUrl(ENDPOINTS.YANDEX.CREDENTIALS, 'YANDEX_SERVICE')
+  },
+  COMPANIES: {
+    BASE: () => buildApiUrl(ENDPOINTS.COMPANIES.BASE, 'CLIENT'),
+    BY_ID: (id) => buildApiUrl(ENDPOINTS.COMPANIES.BY_ID(id), 'CLIENT'),
+    CURRENT: () => buildApiUrl(ENDPOINTS.COMPANIES.CURRENT, 'CLIENT'),
+    AVATAR: (id) => buildApiUrl(ENDPOINTS.COMPANIES.AVATAR(id), 'CLIENT')
+  },
+  PROFILE: {
+    ME: () => buildApiUrl(ENDPOINTS.PROFILE.ME, 'CLIENT'),
+    UPDATE: () => buildApiUrl(ENDPOINTS.PROFILE.UPDATE, 'CLIENT'),
+    AVATAR: () => buildApiUrl(ENDPOINTS.PROFILE.AVATAR, 'CLIENT')
+  },
+  AUTH: {
+    LOGIN: () => buildApiUrl(ENDPOINTS.AUTH.LOGIN, 'AUTH')
   }
 };
 

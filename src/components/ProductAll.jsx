@@ -3,13 +3,36 @@
  * Displays all products with search, filtering, and CRUD operations
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useReducer } from 'react';
 import axios from 'axios';
 import ProductFormNew from './ProductFormNew.jsx';
 import { API_URLS } from '../config/api-config.js';
 import { getProductsPage } from '../services/productService.js';
+import { getCategories } from '../services/categoryService.js';
 import { useNavigate } from 'react-router-dom';
 import { exportLensesExcel } from '../services/excelService.js';
+import BulkStockSyncModal from './BulkStockSyncModal.jsx';
+
+// Reducer for managing selected IDs
+const selectedIdsReducer = (state, action) => {
+    switch (action.type) {
+        case 'TOGGLE':
+            const productId = typeof action.payload === 'string' ? parseInt(action.payload, 10) : action.payload;
+            const newState = new Set(state);
+            if (newState.has(productId)) {
+                newState.delete(productId);
+            } else {
+                newState.add(productId);
+            }
+            return newState;
+        case 'SET_ALL':
+            return new Set(action.payload.map(p => typeof p.id === 'string' ? parseInt(p.id, 10) : p.id));
+        case 'CLEAR':
+            return new Set();
+        default:
+            return state;
+    }
+};
 
 const ProductAll = () => {
     const navigate = useNavigate();
@@ -20,14 +43,17 @@ const ProductAll = () => {
     const [copyProduct, setCopyProduct] = useState(null);
     const [showCopyForm, setShowCopyForm] = useState(false);
 
-    // Selection state
-    const [selectedIds, setSelectedIds] = useState(new Set());
+    // Selection state using reducer
+    const [selectedIds, dispatch] = useReducer(selectedIdsReducer, new Set());
 
     // Pagination state
     const [page, setPage] = useState(0);
     const [size, setSize] = useState(50); // по умолчанию побольше
     const [totalPages, setTotalPages] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
+
+    // Bulk sync state
+    const [showBulkSyncModal, setShowBulkSyncModal] = useState(false);
 
     useEffect(() => {
         fetchPage(page, size);
@@ -41,7 +67,7 @@ const ProductAll = () => {
             setProducts(pageData.content || []);
             setTotalPages(pageData.totalPages || 0);
             setTotalElements(pageData.totalElements || 0);
-            setSelectedIds(new Set());
+            dispatch({ type: 'CLEAR' });
         } catch (error) {
             console.error('Error fetching products page:', error);
         } finally {
@@ -51,8 +77,8 @@ const ProductAll = () => {
 
     const fetchCategories = async () => {
         try {
-            const response = await axios.get(API_URLS.CATEGORIES.BASE);
-            setCategories(response.data);
+            const categoriesData = await getCategories();
+            setCategories(categoriesData);
         } catch (error) {
             console.error('Error fetching categories:', error);
         }
@@ -89,21 +115,21 @@ const ProductAll = () => {
     };
 
     // Checkbox selection
-    const toggleSelect = (id) => {
-        setSelectedIds(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id); else next.add(id);
-            return next;
-        });
-    };
+    const toggleSelect = useCallback((id) => {
+        dispatch({ type: 'TOGGLE', payload: id });
+    }, []);
 
-    const isSelected = (id) => selectedIds.has(id);
+    const isSelected = (id) => {
+        // Ensure consistent type handling - convert string IDs to numbers
+        const productId = typeof id === 'string' ? parseInt(id, 10) : id;
+        return selectedIds.has(productId);
+    };
 
     const selectAllOnPage = () => {
-        setSelectedIds(new Set(products.map(p => p.id)));
+        dispatch({ type: 'SET_ALL', payload: products });
     };
 
-    const clearSelection = () => setSelectedIds(new Set());
+    const clearSelection = () => dispatch({ type: 'CLEAR' });
 
     // Drag selection (rectangle)
     const gridRef = useRef(null);
@@ -148,16 +174,20 @@ const ProductAll = () => {
                 const selRect = selectionRef.current.getBoundingClientRect();
                 // выбрать карточки, которые пересекаются с selRect
                 const cards = grid.querySelectorAll('[data-card-id]');
-                const next = new Set(selectedIds);
+                const selectedCards = [];
                 cards.forEach((el) => {
                     const r = el.getBoundingClientRect();
                     const intersects = !(selRect.right < r.left || selRect.left > r.right || selRect.bottom < r.top || selRect.top > r.bottom);
                     if (intersects) {
                         const id = Number(el.getAttribute('data-card-id'));
-                        next.add(id);
+                        selectedCards.push({ id });
                     }
                 });
-                setSelectedIds(next);
+                
+                // Add selected cards to current selection
+                const currentIds = Array.from(selectedIds);
+                const newIds = [...new Set([...currentIds, ...selectedCards.map(c => c.id)])];
+                dispatch({ type: 'SET_ALL', payload: newIds.map(id => ({ id })) });
 
                 document.removeEventListener('mousemove', onMouseMove);
                 document.removeEventListener('mouseup', onMouseUp);
@@ -187,6 +217,14 @@ const ProductAll = () => {
         a.click();
         a.remove();
         window.URL.revokeObjectURL(url);
+    };
+
+    const handleBulkSync = () => {
+        if (selectedIds.size === 0) {
+            alert('Выберите товары для синхронизации');
+            return;
+        }
+        setShowBulkSyncModal(true);
     };
 
     const PaginationControls = () => (
@@ -296,13 +334,33 @@ const ProductAll = () => {
                 >
                         Очистить выделение
                 </button>
-                    <button
-                        onClick={downloadExcel}
-                        className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-                        disabled={selectedIds.size === 0}
-                    >
-                        Экспорт в Excel (линзы)
-                    </button>
+                    <div className="relative">
+                        <button
+                            onClick={handleBulkSync}
+                            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                            disabled={selectedIds.size === 0}
+                        >
+                            Действия с выбранными ▼
+                        </button>
+                        <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg z-10">
+                            <div className="py-1">
+                                <button
+                                    onClick={downloadExcel}
+                                    className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700"
+                                    disabled={selectedIds.size === 0}
+                                >
+                                    📊 Экспорт в Excel
+                                </button>
+                                <button
+                                    onClick={handleBulkSync}
+                                    className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700"
+                                    disabled={selectedIds.size === 0}
+                                >
+                                    🔄 Синхронизация остатков
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -316,18 +374,24 @@ const ProductAll = () => {
                             data-card-id={product.id}
                             className={`bg-gray-800 rounded-lg shadow-lg p-6 cursor-pointer border ${isSelected(product.id) ? 'border-indigo-400' : 'border-transparent'}`}
                             onDoubleClick={() => handleCardDoubleClick(product)}
-                            onClick={(e) => { if (e.shiftKey) toggleSelect(product.id); }}
+                            onClick={(e) => { 
+                                // Don't handle clicks that originated from checkboxes
+                                if (e.target.type === 'checkbox') {
+                                    return;
+                                }
+                                if (e.shiftKey) toggleSelect(product.id); 
+                            }}
                         >
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center space-x-2">
                                     <input
                                         type="checkbox"
                                         checked={isSelected(product.id)}
-                                        onChange={(e) => {
+                                        onClick={(e) => {
                                             e.stopPropagation();
+                                            e.preventDefault();
                                             toggleSelect(product.id);
                                         }}
-                                        onClick={(e) => e.stopPropagation()}
                                     />
                                     <h3 className="text-lg font-semibold text-white truncate">
                                         {product.name}
@@ -400,6 +464,14 @@ const ProductAll = () => {
             </div>
 
             <PaginationControls />
+
+            {/* Bulk Stock Sync Modal */}
+            {showBulkSyncModal && (
+                <BulkStockSyncModal
+                    productIds={Array.from(selectedIds)}
+                    onClose={() => setShowBulkSyncModal(false)}
+                />
+            )}
     </div>
   );
 };

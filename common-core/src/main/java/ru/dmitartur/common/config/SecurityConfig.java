@@ -11,11 +11,13 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.client.RestTemplate;
 import ru.dmitartur.common.security.MachineTokenInterceptor;
+import ru.dmitartur.common.security.CompanyHeaderFilter;
 
 import java.util.Arrays;
 import java.util.List;
@@ -63,8 +65,11 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorize -> authorize
-                        .anyRequest().permitAll()
-                );
+                        .requestMatchers("/api/public/**", "/actuator/**").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .addFilterBefore(new CompanyHeaderFilter(), BasicAuthenticationFilter.class)
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
         return http.build();
     }
 

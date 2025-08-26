@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.dmitartur.order.dto.OrderDto;
 import ru.dmitartur.order.entity.Order;
 import ru.dmitartur.order.service.OrderService;
+import ru.dmitartur.order.service.OrderContextEnricher;
 
 @Slf4j
 @RestController
@@ -17,6 +18,24 @@ import ru.dmitartur.order.service.OrderService;
 public class OrderController {
 
     private final OrderService orderService;
+    private final OrderContextEnricher orderContextEnricher;
+
+    @PostMapping
+    public ResponseEntity<OrderDto> create(@RequestBody OrderDto dto) {
+        // Обогащаем контекстом (пользователь/компания)
+        var entity = orderService.getOrderMapper().toEntity(dto);
+        orderContextEnricher.enrich(entity);
+        var saved = orderService.save(entity);
+        return ResponseEntity.ok(orderService.getOrderMapper().toDto(saved));
+    }
+
+    @PutMapping
+    public ResponseEntity<OrderDto> update(@RequestBody OrderDto dto) {
+        var entity = orderService.getOrderMapper().toEntity(dto);
+        orderContextEnricher.enrich(entity);
+        var saved = orderService.update(entity);
+        return ResponseEntity.ok(orderService.getOrderMapper().toDto(saved));
+    }
 
     @GetMapping
     public ResponseEntity<Page<OrderDto>> list(

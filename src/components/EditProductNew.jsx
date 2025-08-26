@@ -14,7 +14,8 @@ import SelectField from './ui/select-field.jsx';
 import LoadingSpinner from './ui/loading-spinner.jsx';
 import ErrorMessage from './ui/error-message.jsx';
 import BarcodeScanner from './BarcodeScanner.jsx';
-import MarketSelector from './MarketSelector.jsx';
+import Tabs from './ui/tabs.jsx';
+import ProductStockManagement from './ProductStockManagement.jsx';
 
 /**
  * Dynamic attribute field component (reused from ProductFormNew)
@@ -207,15 +208,13 @@ const EditProductNew = () => {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [barcode, setBarcode] = useState('');
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
-  const [selectedMarkets, setSelectedMarkets] = useState([]);
-  const [quantity, setQuantity] = useState(0);
   const [originalImageBytes, setOriginalImageBytes] = useState(null);
   const [productCategoryId, setProductCategoryId] = useState(null);
   
   // New fields for product data
   const [productPrice, setProductPrice] = useState('');
   const [productArticle, setProductArticle] = useState('');
-  const [productQuantity, setProductQuantity] = useState(0);
+  
   
   // Package info fields
   const [packageWidth, setPackageWidth] = useState('');
@@ -224,10 +223,19 @@ const EditProductNew = () => {
   const [packageWeight, setPackageWeight] = useState('');
   const [packageQuantity, setPackageQuantity] = useState('');
 
+  // Product stocks
+  const [productStocks, setProductStocks] = useState([]);
+
   // Loading and error states
   const [isLoadingProduct, setIsLoadingProduct] = useState(true);
   const [productError, setProductError] = useState(null);
+  const [activeTab, setActiveTab] = useState('product');
   
+  // Product stocks handler
+  const handleStocksChange = (newStocks) => {
+    setProductStocks(newStocks);
+  };
+
   // Form validation
   const {
     values,
@@ -267,7 +275,6 @@ const EditProductNew = () => {
       // Set new fields
       setProductPrice(product.price || '');
       setProductArticle(product.article || '');
-      setProductQuantity(product.quantity || 0);
       setBarcode(product.barcode || '');
       
       // Save category id and set later when categories are loaded
@@ -311,15 +318,11 @@ const EditProductNew = () => {
         updateValue('dynamicFields', fields);
       }
       
-      // Set markets
-      if (product.productMarkets && product.productMarkets.length > 0) {
-        setSelectedMarkets(product.productMarkets.map(pm => ({
-          id: pm.id,
-          marketId: pm.market.id,
-          market: pm.market,
-          quantity: pm.quantity,
-          price: pm.price
-        })));
+      // Markets removed from edit page UI
+      
+      // Set product stocks - теперь используем warehouses вместо warehouseId
+      if (product.productStocks && product.productStocks.length > 0) {
+        setProductStocks(product.productStocks);
       }
       
       // Handle image preview for both base64 string and byte array
@@ -443,9 +446,6 @@ const EditProductNew = () => {
         : parseFloat(productPrice),
       article: productArticle,
       barcode: barcode.trim() || null,
-      quantity: productQuantity === '' || productQuantity === null || productQuantity === undefined
-        ? null
-        : parseInt(productQuantity, 10),
       category: {
         id: selectedCategory.id
       },
@@ -500,12 +500,14 @@ const EditProductNew = () => {
         })
         .flat()
         .filter(item => item !== null),
-      // Добавляем данные о маркетах как ProductMarketDto
-      productMarkets: selectedMarkets.map(m => ({
-        id: m.id,
-        quantity: m.quantity,
-        price: m.price,
-        market: m.market
+      // Маркеты удалены из формы редактирования
+      // Добавляем данные об остатках - теперь используем warehouses
+      productStocks: productStocks.map(stock => ({
+        id: stock.id,
+        warehouses: stock.warehouses,
+        stockType: stock.stockType,
+        quantity: stock.quantity,
+        notes: stock.notes
       }))
     };
 
@@ -560,6 +562,12 @@ const EditProductNew = () => {
     label: category.name
   }));
 
+  // Define tabs
+  const tabs = [
+    { id: 'product', label: 'Информация о товаре' },
+    { id: 'stocks', label: 'Управление остатками' }
+  ];
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
@@ -569,12 +577,22 @@ const EditProductNew = () => {
           <p className="text-gray-400 mt-1">Обновите информацию о продукте и атрибуты</p>
         </div>
 
-        {/* Form */}
-        <div className="bg-gray-800 rounded-lg shadow-lg p-6">
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            handleSubmit(handleFormSubmit);
-          }}>
+        {/* Tabs */}
+        <div className="bg-gray-800 rounded-lg shadow-lg">
+          <div className="p-6 border-b border-gray-700">
+            <Tabs 
+              tabs={tabs} 
+              activeTab={activeTab} 
+              onTabChange={setActiveTab} 
+            />
+          </div>
+
+          <div className="p-6">
+            {activeTab === 'product' && (
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                handleSubmit(handleFormSubmit);
+              }}>
             {/* Product Name */}
             <InputField
               label="Название продукта"
@@ -656,16 +674,7 @@ const EditProductNew = () => {
               </div>
             </div>
 
-            {/* Quantity */}
-            <InputField
-              label="Количество на складе"
-              type="number"
-              placeholder="Количество..."
-              value={productQuantity}
-              onChange={(e) => setProductQuantity(e.target.value)}
-              error=""
-              hasError={false}
-            />
+            {/* Quantity field removed: managed via ProductStockEditor */}
 
             {/* Package Info */}
             <div className="border border-gray-600 rounded-lg p-4 mb-4">
@@ -722,6 +731,8 @@ const EditProductNew = () => {
               </div>
             </div>
 
+
+
             {/* Category Selection */}
             <SelectField
               label="Категория"
@@ -745,13 +756,7 @@ const EditProductNew = () => {
               hasError={touched.image && !!errors.image}
             />
 
-            {/* Market Selection */}
-            <MarketSelector
-              selectedMarkets={selectedMarkets}
-              onMarketsChange={setSelectedMarkets}
-              quantity={quantity}
-              onQuantityChange={setQuantity}
-            />
+            {/* Market selection removed from edit page */}
 
             {/* Dynamic Attributes */}
             {selectedCategory && selectedCategory.attributes && (
@@ -785,9 +790,18 @@ const EditProductNew = () => {
               </button>
             </div>
           </form>
+            )}
+
+            {activeTab === 'stocks' && (
+              <ProductStockManagement 
+                productId={productId} 
+                productName={values.name || 'Товар'} 
+              />
+            )}
+          </div>
           
           {/* Navigation Buttons */}
-          <div className="flex justify-end space-x-4 pt-4 border-t border-gray-700 mt-4">
+          <div className="flex justify-end space-x-4 pt-4 border-t border-gray-700 mt-4 px-6 pb-6">
             <button
               type="button"
               onClick={() => navigate('/')}

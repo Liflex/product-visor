@@ -7,7 +7,9 @@ spring:
     password: postgres
   jpa:
     show-sql: false
-    default-schema: orders
+    properties:
+      hibernate:
+        default_schema: orders
   flyway:
     locations: classpath:db/migration
     schemas: orders

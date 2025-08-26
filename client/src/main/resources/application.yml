@@ -21,7 +21,9 @@ spring:
     schemas: client
     default-schema: client
     baseline-on-migrate: true
-    validate-on-migrate: true
+    validate-on-migrate: false
+    out-of-order: true
+    ignore-migration-patterns: "*:ignored"
   profiles:
     active: common
 

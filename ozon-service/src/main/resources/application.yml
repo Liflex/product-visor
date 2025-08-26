@@ -26,9 +26,10 @@ spring:
     default-schema: ozon
 
 ozon:
+  default-warehouse-id: 1020005000189785
   base-url: ${OZON_BASE_URL:https://api-seller.ozon.ru}
-  client-id: ${OZON_CLIENT_ID:2960590}
-  api-key: ${OZON_API_KEY:026e58e9-1546-4dd2-b47c-b9f111c1f587}
+  client-id: ${OZON_CLIENT_ID:20}
+  api-key: ${OZON_API_KEY:9b2c7f15a7}
 
 # Настройка часового пояса для приложения
 server:
@@ -51,7 +52,7 @@ app:
   sync:
     enabled: true
     checkpoint-name: FBO_ORDERS
-    max-gap-minutes: 15 # Максимальный разрыв в минутах для автоматической синхронизации
+    max-gap-minutes: 1 # Максимальный разрыв в минутах для автоматической синхронизации
 
 # Идентификатор текущего маркета
 application:

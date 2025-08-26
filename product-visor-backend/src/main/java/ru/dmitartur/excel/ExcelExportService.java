@@ -126,7 +126,8 @@ public class ExcelExportService {
         dto.setBarcode(p.getBarcode());
         dto.setPrice(p.getPrice() == null ? "" : String.valueOf(p.getPrice()));
         dto.setCategoryName(p.getCategory() == null ? "" : p.getCategory().getName());
-        dto.setQuantity(p.getQuantity() == null ? "" : String.valueOf(p.getQuantity()));
+        //TODO нужно будет поправить чтобы quantity доставалось из выбранного productStock типа.
+//        dto.setQuantity(p.getQuantity() == null ? "" : String.valueOf(p.getQuantity()));
         if (p.getPackageInfo() != null) {
             var pkg = p.getPackageInfo();
             dto.setPackageWidth(s(pkg.getWidth()));

@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -74,6 +75,12 @@ public class Order {
 
     @Column(name = "delivering_date")
     private LocalDateTime deliveringDate; // Дата начала доставки
+
+    @Column(name = "company_id")
+    private UUID companyId;
+
+    @Column(name = "owner_user_id")
+    private UUID ownerUserId;
 
     // FBS поля - отмена
     @Column(name = "cancel_reason")

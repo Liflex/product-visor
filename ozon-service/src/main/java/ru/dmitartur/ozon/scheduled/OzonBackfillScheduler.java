@@ -8,13 +8,18 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import ru.dmitartur.common.security.CompanyContextHolder;
+import ru.dmitartur.library.marketplace.entity.CompanyCredentials;
 import ru.dmitartur.ozon.entity.SyncCheckpoint;
 import ru.dmitartur.ozon.repository.SyncCheckpointRepository;
+import ru.dmitartur.library.marketplace.service.CompanyCredentialsService;
 import ru.dmitartur.ozon.service.OzonService;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Slf4j
 @Component
@@ -22,6 +27,7 @@ import java.util.Optional;
 public class OzonBackfillScheduler {
     private final OzonService ozonService;
     private final SyncCheckpointRepository syncCheckpointRepository;
+    private final CompanyCredentialsService companyCredentialsService;
     
     @Value("${app.sync.checkpoint-name:FBO_ORDERS}")
     private String checkpointName;
@@ -39,7 +45,8 @@ public class OzonBackfillScheduler {
     /**
      * Проверить необходимость синхронизации при старте приложения
      */
-    @Scheduled(initialDelay = 30000, fixedDelay = Long.MAX_VALUE) // Запуск через 30 секунд после старта
+    @Scheduled(initialDelay = 30000, fixedDelay = Long.MAX_VALUE)
+    @Transactional// Запуск через 30 секунд после старта
     public void checkSyncOnStartup() {
         if (!syncEnabled) {
             log.info("🔄 Sync service is disabled");
@@ -49,20 +56,15 @@ public class OzonBackfillScheduler {
         log.info("🔄 Checking sync status on startup...");
         
         try {
-            Optional<SyncCheckpoint> checkpoint = syncCheckpointRepository.findByCheckpointName(checkpointName);
+            // Получаем все компании с учетными данными
+            List<CompanyCredentials> companies = companyCredentialsService.findAll();
             
-            if (checkpoint.isEmpty()) {
-                log.info("🆕 No sync checkpoint found, performing initial sync");
-                ozonBackfillScheduler.performInitialSync();
+            if (companies.isEmpty()) {
+                log.warn("⚠️ No companies found with credentials, using default configuration");
             } else {
-                SyncCheckpoint cp = checkpoint.get();
-                Duration gap = Duration.between(cp.getLastSyncAt(), LocalDateTime.now());
-                
-                if (gap.toHours() > maxGapMinutes) {
-                    log.warn("⚠️ Large sync gap detected: {} hours, performing catch-up sync", gap.toHours());
-                    ozonBackfillScheduler.performCatchUpSync(cp);
-                } else {
-                    log.info("✅ Sync is up to date, last sync: {} hours ago", gap.toHours());
+                log.info("🏢 Found {} companies, performing sync for each", companies.size());
+                for (CompanyCredentials company : companies) {
+                    performSyncForCompany(company);
                 }
             }
         } catch (Exception e) {
@@ -73,7 +75,8 @@ public class OzonBackfillScheduler {
     /**
      * Периодическая проверка синхронизации
      */
-    @Scheduled(fixedRate = 120000) // Каждые 2 минуты
+    @Scheduled(fixedDelay = 120000) // Каждые 2 минуты
+    @Transactional
     public void periodicSyncCheck() {
         if (!syncEnabled) {
             return;
@@ -82,15 +85,15 @@ public class OzonBackfillScheduler {
         log.debug("🔄 Performing periodic sync check...");
         
         try {
-            Optional<SyncCheckpoint> checkpoint = syncCheckpointRepository.findByCheckpointName(checkpointName);
+            // Получаем все компании с учетными данными
+            List<CompanyCredentials> companies = companyCredentialsService.findAll();
             
-            if (checkpoint.isPresent()) {
-                SyncCheckpoint cp = checkpoint.get();
-                Duration gap = Duration.between(cp.getLastSyncAt(), LocalDateTime.now());
-                
-                if (gap.toMinutes() > maxGapMinutes) {
-                    log.info("🔄 Periodic sync triggered, gap: {} hours", gap.toHours());
-                    performCatchUpSync(cp);
+            if (companies.isEmpty()) {
+                log.warn("⚠️ No companies found with credentials, using default configuration");
+            } else {
+                log.info("🏢 Found {} companies, performing periodic sync for each", companies.size());
+                for (CompanyCredentials company : companies) {
+                    performPeriodicSyncForCompany(company);
                 }
             }
         } catch (Exception e) {
@@ -99,14 +102,67 @@ public class OzonBackfillScheduler {
     }
 
     /**
-     * Выполнить начальную синхронизацию
+     * Выполнить синхронизацию для конкретной компании
+     */
+    private void performSyncForCompany(CompanyCredentials company) {
+        String companyId = company.getCompanyId().toString();
+        log.info("🏢 Starting sync for company: {}", companyId);
+        
+        try {
+            Optional<SyncCheckpoint> checkpoint = syncCheckpointRepository.findByCheckpointName(checkpointName + "_" + companyId);
+            
+            if (checkpoint.isEmpty()) {
+                log.info("🆕 No sync checkpoint found for company {}, performing initial sync", companyId);
+                ozonBackfillScheduler.performInitialSyncForCompany(company);
+            } else {
+                SyncCheckpoint cp = checkpoint.get();
+                Duration gap = Duration.between(cp.getLastSyncAt(), LocalDateTime.now());
+                
+                if (gap.toHours() > maxGapMinutes) {
+                    log.warn("⚠️ Large sync gap detected for company {}: {} hours, performing catch-up sync", companyId, gap.toHours());
+                    ozonBackfillScheduler.performCatchUpSyncForCompany(cp, company);
+                } else {
+                    log.info("✅ Sync is up to date for company {}, last sync: {} hours ago", companyId, gap.toHours());
+                }
+            }
+        } catch (Exception e) {
+            log.error("❌ Error during sync for company {}: {}", companyId, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Выполнить периодическую синхронизацию для конкретной компании
+     */
+    private void performPeriodicSyncForCompany(CompanyCredentials company) {
+        String companyId = company.getCompanyId().toString();
+        
+        try {
+            Optional<SyncCheckpoint> checkpoint = syncCheckpointRepository.findByCheckpointName(checkpointName + "_" + companyId);
+            
+            if (checkpoint.isPresent()) {
+                SyncCheckpoint cp = checkpoint.get();
+                Duration gap = Duration.between(cp.getLastSyncAt(), LocalDateTime.now());
+                
+                if (gap.toMinutes() > maxGapMinutes) {
+                    log.info("🔄 Periodic sync triggered for company {}, gap: {} hours", companyId, gap.toHours());
+                    performCatchUpSyncForCompany(cp, company);
+                }
+            }
+        } catch (Exception e) {
+            log.error("❌ Error during periodic sync for company {}: {}", companyId, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Выполнить начальную синхронизацию для конкретной компании
      */
     @Transactional
-    public void performInitialSync() {
-        log.info("🚀 Starting initial sync...");
+    public void performInitialSyncForCompany(CompanyCredentials company) {
+        String companyId = company.getCompanyId().toString();
+        log.info("🚀 Starting initial sync for company: {}", companyId);
         
         long startTime = System.currentTimeMillis();
-        SyncCheckpoint checkpoint = new SyncCheckpoint(checkpointName, LocalDateTime.now());
+        SyncCheckpoint checkpoint = new SyncCheckpoint(checkpointName + "_" + companyId, LocalDateTime.now());
         checkpoint.setStatus("IN_PROGRESS");
         checkpoint = syncCheckpointRepository.save(checkpoint);
         
@@ -115,10 +171,11 @@ public class OzonBackfillScheduler {
             LocalDateTime from = LocalDateTime.now().minusDays(180);
             LocalDateTime to = LocalDateTime.now();
             
-            log.info("🚀 Initial sync: loading FBO + FBS orders for the last 6 months ({} to {})", from, to);
+            log.info("🚀 Initial sync for company {}: loading FBO + FBS orders for the last 6 months ({} to {})", 
+                    companyId, from, to);
             
             int processedOrders = ozonService.backfillAllOrders(
-                new ru.dmitartur.ozon.dto.DateRangeDto(from.toString(), to.toString()), 1000);
+                new ru.dmitartur.common.dto.marketplace.DateRangeDto(from.toString(), to.toString()), 1000);
             
             checkpoint.setOrdersProcessed(processedOrders);
             checkpoint.setStatus("SUCCESS");
@@ -127,8 +184,8 @@ public class OzonBackfillScheduler {
             
             syncCheckpointRepository.save(checkpoint);
             
-            log.info("✅ Initial sync completed: {} FBO + FBS orders processed in {} ms", 
-                    processedOrders, checkpoint.getSyncDurationMs());
+            log.info("✅ Initial sync completed for company {}: {} FBO + FBS orders processed in {} ms", 
+                    companyId, processedOrders, checkpoint.getSyncDurationMs());
             
         } catch (Exception e) {
             checkpoint.setStatus("FAILED");
@@ -136,17 +193,18 @@ public class OzonBackfillScheduler {
             checkpoint.setSyncDurationMs(System.currentTimeMillis() - startTime);
             syncCheckpointRepository.save(checkpoint);
             
-            log.error("❌ Initial sync failed: {}", e.getMessage(), e);
+            log.error("❌ Initial sync failed for company {}: {}", companyId, e.getMessage(), e);
             throw e;
         }
     }
 
     /**
-     * Выполнить догоняющую синхронизацию
+     * Выполнить догоняющую синхронизацию для конкретной компании
      */
     @Transactional
-    public void performCatchUpSync(SyncCheckpoint checkpoint) {
-        log.info("🔄 Starting catch-up sync from {}", checkpoint.getLastSyncAt());
+    public void performCatchUpSyncForCompany(SyncCheckpoint checkpoint, CompanyCredentials company) {
+        String companyId = company.getCompanyId().toString();
+        log.info("🔄 Starting catch-up sync for company {} from {}", companyId, checkpoint.getLastSyncAt());
         
         long startTime = System.currentTimeMillis();
         checkpoint.setStatus("IN_PROGRESS");
@@ -157,7 +215,7 @@ public class OzonBackfillScheduler {
             LocalDateTime to = LocalDateTime.now();
             
             int processedOrders = ozonService.backfillAllOrders(
-                new ru.dmitartur.ozon.dto.DateRangeDto(from.toString(), to.toString()), 1000);
+                new ru.dmitartur.common.dto.marketplace.DateRangeDto(from.toString(), to.toString()), 1000);
             
             checkpoint.setOrdersProcessed(processedOrders);
             checkpoint.setStatus("SUCCESS");
@@ -166,8 +224,8 @@ public class OzonBackfillScheduler {
             
             syncCheckpointRepository.save(checkpoint);
             
-            log.info("✅ Catch-up sync completed: {} FBO + FBS orders processed in {} ms", 
-                    processedOrders, checkpoint.getSyncDurationMs());
+            log.info("✅ Catch-up sync completed for company {}: {} FBO + FBS orders processed in {} ms", 
+                    companyId, processedOrders, checkpoint.getSyncDurationMs());
             
         } catch (Exception e) {
             checkpoint.setStatus("FAILED");
@@ -175,7 +233,7 @@ public class OzonBackfillScheduler {
             checkpoint.setSyncDurationMs(System.currentTimeMillis() - startTime);
             syncCheckpointRepository.save(checkpoint);
             
-            log.error("❌ Catch-up sync failed: {}", e.getMessage(), e);
+            log.error("❌ Catch-up sync failed for company {}: {}", companyId, e.getMessage(), e);
             throw e;
         }
     }
@@ -188,12 +246,34 @@ public class OzonBackfillScheduler {
     }
 
     /**
-     * Принудительно запустить синхронизацию
+     * Получить информацию о последней синхронизации для конкретной компании
+     */
+    public Optional<SyncCheckpoint> getLastSyncInfoForCompany(UUID companyId) {
+        return syncCheckpointRepository.findByCheckpointName(checkpointName + "_" + companyId);
+    }
+
+
+    /**
+     * Принудительно запустить синхронизацию для всех компаний
      */
     @Transactional
-    public void forceSync() {
-        log.info("🔄 Force sync requested - will sync FBO + FBS orders for the last 6 months");
-        performInitialSync();
+    public void forceSyncAllCompanies() {
+        log.info("🔄 Force sync requested for all companies");
+        
+        List<CompanyCredentials> companies = companyCredentialsService.findAll();
+        
+        if (companies.isEmpty()) {
+            log.warn("⚠️ No companies found with credentials, using default configuration");
+        } else {
+            log.info("🏢 Force syncing {} companies", companies.size());
+            for (CompanyCredentials company : companies) {
+                try {
+                    performInitialSyncForCompany(company);
+                } catch (Exception e) {
+                    log.error("❌ Force sync failed for company {}: {}", company.getCompanyId(), e.getMessage(), e);
+                }
+            }
+        }
     }
 }
 

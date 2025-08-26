@@ -67,11 +67,21 @@ public class SimpleTokenController {
     @PostMapping("/login")
     public ResponseEntity<Map<String, Object>> login(
             @RequestParam String username,
-            @RequestParam String password,
-            @RequestParam String client_id,
-            @RequestParam String client_secret) {
+            @RequestParam String password) {
 
         try {
+            log.info("=== LOGIN REQUEST START ===");
+            log.info("Username: {}", username);
+            log.info("Password: [HIDDEN]");
+            log.info("Request received at: {}", java.time.LocalDateTime.now());
+            
+            // Получаем client_id и client_secret из конфигурации
+            String clientId = "oficiant-client"; // Из конфигурации
+            String clientSecret = "oficiant-secret-90489bc550923ed2"; // Из конфигурации
+            
+            log.info("Using client_id: {}", clientId);
+            log.info("Using client_secret: [HIDDEN]");
+            
             log.info("Attempting authentication for user: {}", username);
             
             // Проверяем rate limit
@@ -94,37 +104,53 @@ public class SimpleTokenController {
                 ));
             }
             
-                        log.info("Authentication successful for user: {}", username);
+            log.info("Authentication successful for user: {}", username);
             
             // Проверяем клиента
-            RegisteredClient registeredClient = clientRepository.findByClientId(client_id);
+            log.info("Looking up client with ID: {}", clientId);
+            RegisteredClient registeredClient = clientRepository.findByClientId(clientId);
             if (registeredClient == null) {
+                log.error("Client not found: {}", clientId);
                 return ResponseEntity.badRequest().body(Map.of(
                     "error", "invalid_client",
                     "message", "Client not found"
                 ));
             }
+            log.info("Client found: {}", clientId);
 
             // Проверяем client_secret (сравниваем с хешированным значением)
             String expectedSecret = registeredClient.getClientSecret();
-            if (!passwordEncoder.matches(client_secret, expectedSecret)) {
-                log.error("Invalid client secret. Expected: {}, Provided: {}", expectedSecret, client_secret);
+            log.info("Client secret check - Expected hash: {}, Provided: {}", expectedSecret, clientSecret);
+            
+            if (!passwordEncoder.matches(clientSecret, expectedSecret)) {
+                log.error("Invalid client secret. Expected hash: {}, Provided: {}", expectedSecret, clientSecret);
                 return ResponseEntity.badRequest().body(Map.of(
                     "error", "invalid_client",
                     "message", "Invalid client secret"
                 ));
             }
+            log.info("Client secret validation successful");
 
-            // Создаем JWT токен
+            // Создаем JWT токен с расширенными claim'ами (user_id, email)
+            log.info("Creating JWT token for user: {}", username);
             var now = Instant.now();
+            var user = userService.findByUsername(username);
+            log.info("User found in database - ID: {}, Email: {}", user.getId(), user.getEmail());
+            
             var claims = JwtClaimsSet.builder()
                 .subject(userAuthentication.getName())
-                .claim("client_id", client_id)
+                .claim("client_id", clientId)
+                .claim("user_id", String.valueOf(user.getId()))
+                .claim("email", user.getEmail())
                 .issuedAt(now)
                 .expiresAt(now.plusSeconds(18000)) // 300 минут
                 .build();
 
+            log.info("JWT claims created - Subject: {}, Client: {}, User ID: {}", 
+                    userAuthentication.getName(), clientId, user.getId());
+
             var jwt = jwtEncoder.encode(org.springframework.security.oauth2.jwt.JwtEncoderParameters.from(claims));
+            log.info("JWT token generated successfully");
 
             Map<String, Object> response = new HashMap<>();
             response.put("access_token", jwt.getTokenValue());
@@ -132,9 +158,19 @@ public class SimpleTokenController {
             response.put("expires_in", 18000);
             response.put("user", userAuthentication.getName());
             
+            log.info("=== LOGIN REQUEST SUCCESSFUL ===");
+            log.info("Response prepared for user: {}", username);
+            log.info("Token expires in: {} seconds", 18000);
+            
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
+            log.error("=== LOGIN REQUEST FAILED ===");
+            log.error("Error during authentication for user: {}", username);
+            log.error("Exception type: {}", e.getClass().getSimpleName());
+            log.error("Exception message: {}", e.getMessage());
+            log.error("Stack trace:", e);
+            
             return ResponseEntity.badRequest().body(Map.of(
                 "error", "authentication_failed",
                 "message", e.getMessage()

@@ -132,17 +132,8 @@ public class OrderEventConsumer {
                 return;
             }
 
-            ru.dmitartur.entity.Product product = productOpt.get();
-            int oldQuantity = product.getQuantity();
-            int newQuantity = productService.computeQuantityWithDelta(oldQuantity, quantityChange);
-            product.setQuantity(newQuantity);
-
-            ru.dmitartur.entity.Product saved = productService.update(product);
-            if (newQuantity != oldQuantity) {
-                productService.trackQuantityChange(saved, oldQuantity, newQuantity);
-            }
-
-            log.info("✅ Updated product quantity: article={}, change={}, event={}, postingNumber={}", article, quantityChange, eventType, postingNumber);
+            // TODO: После рефакторинга Order будет присылать склад; здесь нужно будет вызывать обновление ProductStock
+            log.info("ℹ️ Skipping product quantity update for article={} (quantity moved to ProductStock). TODO: handle via ProductStock with warehouse context.", article);
         } catch (Exception e) {
             log.error("❌ Error updating product quantity: article={}, event={}, postingNumber={}, error={}", article, eventType, postingNumber, e.getMessage());
         }

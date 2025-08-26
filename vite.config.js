@@ -15,6 +15,18 @@ export default defineConfig({
       '/api/orders': {
         target: 'http://192.168.1.59:9088',
         changeOrigin: true,
+      },
+      '/api/companies': {
+        target: 'http://192.168.1.59:9089',
+        changeOrigin: true,
+      },
+      '/api/warehouses': {
+        target: 'http://192.168.1.59:8085',
+        changeOrigin: true,
+      },
+      '/api/auth': {
+        target: 'http://192.168.1.59:9099',
+        changeOrigin: true,
       }
     }
   },

@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/yandex_service
+    username: postgres
+    password: postgres
+
+# Yandex Market API Configuration
+yandex:
+  base-url: https://api.partner.market.yandex.ru
+  client-id: ${YANDEX_CLIENT_ID}
+  client-secret: ${YANDEX_CLIENT_SECRET}
+  default-warehouse-id: ${YANDEX_DEFAULT_WAREHOUSE_ID}
