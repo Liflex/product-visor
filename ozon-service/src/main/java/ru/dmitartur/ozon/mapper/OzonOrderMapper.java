@@ -7,12 +7,19 @@ import ru.dmitartur.common.dto.OrderDto;
 import ru.dmitartur.common.dto.OrderItemDto;
 import ru.dmitartur.common.enums.Market;
 import ru.dmitartur.common.enums.OrderStatus;
+import ru.dmitartur.common.security.CompanyContextHolder;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Маппер для преобразования данных заказов из Ozon API в Order DTO
@@ -27,7 +34,10 @@ public class OzonOrderMapper {
     public OrderDto mapOzonOrderToDto(JsonNode ozonOrder) {
         try {
             OrderDto orderDto = new OrderDto();
-            
+
+            orderDto.setCompanyId(UUID.fromString(CompanyContextHolder.getCompanyId()));
+            orderDto.setOwnerUserId(UUID.fromString(CompanyContextHolder.getUserId()));
+
             // Основные поля
             orderDto.setPostingNumber(ozonOrder.path("posting_number").asText());
             orderDto.setSource("OZON_FBO");
@@ -157,7 +167,11 @@ public class OzonOrderMapper {
     public OrderDto mapOzonFbsOrderToDto(JsonNode ozonOrder) {
         try {
             OrderDto orderDto = new OrderDto();
-            
+
+            orderDto.setCompanyId(UUID.fromString(CompanyContextHolder.getCompanyId()));
+            orderDto.setOwnerUserId(UUID.fromString(CompanyContextHolder.getUserId()));
+
+
             // Основные поля
             orderDto.setPostingNumber(ozonOrder.path("posting_number").asText());
             orderDto.setSource("OZON_FBS");
@@ -191,6 +205,10 @@ public class OzonOrderMapper {
             if (ozonOrder.has("delivery_method")) {
                 JsonNode delivery = ozonOrder.get("delivery_method");
                 orderDto.setDeliveryMethodName(delivery.path("name").asText());
+                // Маппинг warehouse_id для управления остатками
+                if (delivery.has("warehouse_id")) {
+                    orderDto.setWarehouseId(delivery.path("warehouse_id").asText());
+                }
             }
             orderDto.setTrackingNumber(ozonOrder.path("tracking_number").asText());
             orderDto.setSubstatus(ozonOrder.path("substatus").asText());
@@ -278,8 +296,35 @@ public class OzonOrderMapper {
             return null;
         }
         
+        String value = dateString.trim();
+
+        // Попытка 1: ISO_INSTANT, например 2025-08-27T08:07:11Z
         try {
-            return LocalDateTime.parse(dateString);
+            Instant instant = Instant.parse(value);
+            return LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
+        } catch (DateTimeParseException ignored) { }
+
+        // Попытка 2: OffsetDateTime с таймзоной, например 2025-08-27T08:07:11+03:00
+        try {
+            OffsetDateTime odt = OffsetDateTime.parse(value, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+            return odt.toLocalDateTime();
+        } catch (DateTimeParseException ignored) { }
+
+        // Попытка 3: ZonedDateTime, например 2025-08-27T08:07:11+03:00[Europe/Moscow]
+        try {
+            ZonedDateTime zdt = ZonedDateTime.parse(value, DateTimeFormatter.ISO_ZONED_DATE_TIME);
+            return zdt.toLocalDateTime();
+        } catch (DateTimeParseException ignored) { }
+
+        // Попытка 4: Локальная дата-время ISO без зоны, например 2025-08-27T08:07:11
+        try {
+            return LocalDateTime.parse(value, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        } catch (DateTimeParseException ignored) { }
+
+        // Попытка 5: Формат с пробелом между датой и временем: 2025-08-27 08:07:11
+        try {
+            String normalized = value.replace(' ', 'T');
+            return LocalDateTime.parse(normalized, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         } catch (DateTimeParseException e) {
             log.warn("❌ Failed to parse date: {}", dateString);
             return null;

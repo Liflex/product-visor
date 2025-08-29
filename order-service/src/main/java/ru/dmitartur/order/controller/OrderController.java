@@ -6,8 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.dmitartur.order.dto.OrderDto;
-import ru.dmitartur.order.entity.Order;
+import ru.dmitartur.common.dto.OrderDto;
 import ru.dmitartur.order.service.OrderService;
 import ru.dmitartur.order.service.OrderContextEnricher;
 

@@ -12,7 +12,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class OzonScheduler implements BaseMarketplaceScheduler {
     
-    private final OzonBackfillScheduler ozonBackfillScheduler;
+    private final OzonBackfillSchedulerV2 ozonBackfillScheduler;
 
     @Override
     public void forceSync() {

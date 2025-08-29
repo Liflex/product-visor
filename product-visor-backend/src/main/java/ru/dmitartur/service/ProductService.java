@@ -160,7 +160,29 @@ public class ProductService {
 
     public Page<Product> search(String query, Pageable pageable) {
         logger.debug("🔎 Searching products by query: '{}'", query);
-        return productRepository.searchFullText(query, pageable);
+        
+        // Получаем текущего пользователя
+        UUID ownerUserId = JwtUtil.getRequiredOwnerId();
+        
+        // Определяем лимит для поиска (больше чем размер страницы для лучшего покрытия)
+        int searchLimit = Math.max(pageable.getPageSize() * 3, 100);
+        
+        // Пытаемся получить companyId из контекста
+        var companyIdOpt = JwtUtil.resolveEffectiveCompanyId();
+        
+        if (companyIdOpt.isPresent()) {
+            try {
+                UUID companyId = UUID.fromString(companyIdOpt.get());
+                logger.debug("🔎 Searching products for company: {} and user: {}", companyId, ownerUserId);
+                return productRepository.searchFullTextByCompany(query, ownerUserId, companyId, searchLimit, pageable);
+            } catch (IllegalArgumentException e) {
+                logger.warn("Invalid company ID format: {}, falling back to user-only search", companyIdOpt.get());
+            }
+        }
+        
+        // Поиск только по пользователю
+        logger.debug("🔎 Searching products for user: {}", ownerUserId);
+        return productRepository.searchFullText(query, ownerUserId, searchLimit, pageable);
     }
 
     /**

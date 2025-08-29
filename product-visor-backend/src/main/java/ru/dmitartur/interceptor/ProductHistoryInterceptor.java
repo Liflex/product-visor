@@ -9,8 +9,11 @@ import ru.dmitartur.entity.Warehouse;
 import ru.dmitartur.service.ProductHistoryService;
 import ru.dmitartur.kafka.StockEventProducer;
 import ru.dmitartur.context.ChangeContextHolder;
+import ru.dmitartur.common.utils.JwtUtil;
+import ru.dmitartur.util.ChangeReasonUtil;
 
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -24,106 +27,11 @@ public class ProductHistoryInterceptor {
     
     private final ProductHistoryService productHistoryService;
     private final StockEventProducer stockEventProducer;
-    
-    /**
-     * Отследить изменение количества товара
-     */
-    public void trackQuantityChange(Product product, int oldQuantity, int newQuantity, 
-                                   String changeReason, String sourceSystem, String sourceId) {
-        try {
-            productHistoryService.saveHistory(
-                product.getId(),
-                "quantity",
-                String.valueOf(oldQuantity),
-                String.valueOf(newQuantity),
-                changeReason,
-                sourceSystem,
-                sourceId
-            );
-            
-            log.debug("📝 Tracked quantity change: productId={}, oldQuantity={}, newQuantity={}, reason={}, source={}", 
-                    product.getId(), oldQuantity, newQuantity, changeReason, sourceSystem);
-            ChangeContextHolder.ChangeContext ctx = ChangeContextHolder.get();
-            String originMarket = (ctx != null) ? ctx.originMarket : null;
-            stockEventProducer.sendStockChanged(
-                product.getId(),
-                product.getArticle(),
-                oldQuantity,
-                newQuantity,
-                changeReason,
-                sourceSystem,
-                sourceId,
-                originMarket
-            );
-                    
-        } catch (Exception e) {
-            log.error("❌ Error tracking quantity change: productId={}, error={}", 
-                    product.getId(), e.getMessage());
-        }
-    }
-    
-    /**
-     * Отследить изменение количества товара с автоматическим определением контекста
-     */
-    public void trackQuantityChange(Product product, int oldQuantity, int newQuantity) {
-        String changeReason = determineChangeReason();
-        String sourceSystem = determineSourceSystem();
-        String sourceId = determineSourceId();
-        
-        trackQuantityChange(product, oldQuantity, newQuantity, changeReason, sourceSystem, sourceId);
-    }
-
-    /**
-     * Отследить изменение количества в ProductStock (с указанием склада)
-     * @deprecated Use trackProductStockQuantityChange(ProductStock stock, int oldQuantity, int newQuantity) instead
-     */
-    @Deprecated
-    public void trackProductStockQuantityChange(Product product, Warehouse warehouse, int oldQuantity, int newQuantity) {
-        String changeReason = determineChangeReason();
-        String sourceSystem = determineSourceSystem();
-        String sourceId = determineSourceId();
-
-        try {
-            String metadata = String.format("{\"warehouseId\":\"%s\",\"externalWarehouseId\":\"%s\",\"warehouseType\":\"%s\"}",
-                    warehouse != null && warehouse.getId() != null ? warehouse.getId().toString() : "",
-                    warehouse != null ? String.valueOf(warehouse.getExternalWarehouseId()) : "",
-                    warehouse != null && warehouse.getWarehouseType() != null ? warehouse.getWarehouseType().name() : "");
-
-            productHistoryService.saveHistoryWithMetadata(
-                    product.getId(),
-                    "product_stock.quantity",
-                    String.valueOf(oldQuantity),
-                    String.valueOf(newQuantity),
-                    changeReason,
-                    sourceSystem,
-                    sourceId,
-                    metadata
-            );
-
-            ChangeContextHolder.ChangeContext ctx = ChangeContextHolder.get();
-            String originMarket = (ctx != null) ? ctx.originMarket : null;
-            stockEventProducer.sendStockChangedForWarehouse(
-                    product.getId(),
-                    product.getArticle(),
-                    warehouse != null && warehouse.getId() != null ? warehouse.getId().toString() : null,
-                    warehouse != null ? warehouse.getExternalWarehouseId() : null,
-                    warehouse != null && warehouse.getWarehouseType() != null ? warehouse.getWarehouseType().name() : null,
-                    oldQuantity,
-                    newQuantity,
-                    changeReason,
-                    sourceSystem,
-                    sourceId,
-                    originMarket
-            );
-        } catch (Exception e) {
-            log.error("❌ Error tracking product stock quantity change: productId={}, error={}", product.getId(), e.getMessage());
-        }
-    }
 
     /**
      * Отследить изменение количества в ProductStock (новый метод для ManyToMany)
      */
-    public void trackProductStockQuantityChange(ProductStock stock, int oldQuantity, int newQuantity,
+    public void trackProductStockQuantityChange(ProductStock stock, Integer oldQuantity, Integer newQuantity,
                                                String changeReason, String sourceSystem, String sourceId) {
         try {
             Product product = stock.getProduct();
@@ -155,18 +63,54 @@ public class ProductHistoryInterceptor {
             String metadata = String.format("{\"warehouses\":[%s],\"stockType\":\"%s\"}", 
                     warehouseMetadata, stock.getStockType().name());
 
-            log.debug("💾 Saving history with metadata: productId={}, metadata={}", product.getId(), metadata);
+            // Определяем причину изменения и систему-источник
+            String finalChangeReason = ChangeReasonUtil.determineChangeReason(sourceSystem, sourceId);
+            String finalSourceSystem = ChangeReasonUtil.determineSourceSystem(finalChangeReason, sourceId);
+            
+            // Получаем информацию о пользователе и компании
+            UUID userId = null;
+            UUID companyId = null;
+            
+            try {
+                userId = JwtUtil.getRequiredOwnerId();
+                var companyIdOpt = JwtUtil.resolveEffectiveCompanyId();
+                if (companyIdOpt.isPresent()) {
+                    companyId = UUID.fromString(companyIdOpt.get());
+                }
+            } catch (Exception e) {
+                log.warn("⚠️ Could not get user/company info for history tracking: {}", e.getMessage());
+            }
 
-            productHistoryService.saveHistoryWithMetadata(
-                    product.getId(),
-                    "product_stock.quantity",
-                    String.valueOf(oldQuantity),
-                    String.valueOf(newQuantity),
-                    changeReason,
-                    sourceSystem,
-                    sourceId,
-                    metadata
-            );
+            log.debug("💾 Saving history with metadata: productId={}, metadata={}, changeReason={}, sourceSystem={}, userId={}, companyId={}", 
+                    product.getId(), metadata, finalChangeReason, finalSourceSystem, userId, companyId);
+
+            // Сохраняем историю с информацией о пользователе
+            if (userId != null) {
+                productHistoryService.saveHistoryWithUserInfo(
+                        product.getId(),
+                        "product_stock.quantity",
+                        String.valueOf(oldQuantity),
+                        String.valueOf(newQuantity),
+                        finalChangeReason,
+                        finalSourceSystem,
+                        sourceId,
+                        metadata,
+                        userId,
+                        companyId
+                );
+            } else {
+                // Fallback для случаев, когда нет информации о пользователе
+                productHistoryService.saveHistoryWithMetadata(
+                        product.getId(),
+                        "product_stock.quantity",
+                        String.valueOf(oldQuantity),
+                        String.valueOf(newQuantity),
+                        finalChangeReason,
+                        finalSourceSystem,
+                        sourceId,
+                        metadata
+                );
+            }
 
             log.info("✅ History saved successfully for productId={}, stockId={}", product.getId(), stock.getId());
 
@@ -191,10 +135,11 @@ public class ProductHistoryInterceptor {
                         warehouse.getWarehouseType() != null ? warehouse.getWarehouseType().name() : null,
                         oldQuantity,
                         newQuantity,
-                        changeReason,
-                        sourceSystem,
+                        finalChangeReason,
+                        finalSourceSystem,
                         sourceId,
-                        originMarket
+                        originMarket,
+                        warehouse.getCompanyId().toString()
                 );
                 
                 log.debug("✅ Stock change event sent for warehouse: productId={}, warehouseId={}, oldQty={}, newQty={}", 
@@ -209,85 +154,5 @@ public class ProductHistoryInterceptor {
                     stock.getId(), stock.getProduct() != null ? stock.getProduct().getId() : "UNKNOWN", 
                     oldQuantity, newQuantity, e.getMessage(), e);
         }
-    }
-
-    /**
-     * Отследить изменение количества в ProductStock с автоматическим определением контекста
-     */
-    public void trackProductStockQuantityChange(ProductStock stock, int oldQuantity, int newQuantity) {
-        String changeReason = determineChangeReason();
-        String sourceSystem = determineSourceSystem();
-        String sourceId = determineSourceId();
-        
-        trackProductStockQuantityChange(stock, oldQuantity, newQuantity, changeReason, sourceSystem, sourceId);
-    }
-    
-    /**
-     * Определить причину изменения по контексту выполнения
-     */
-    private String determineChangeReason() {
-        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-        
-        for (StackTraceElement element : stackTrace) {
-            String className = element.getClassName();
-            String methodName = element.getMethodName();
-            
-            // Определяем причину по контексту
-            if (className.contains("OrderEventConsumer")) {
-                if (methodName.contains("handleOrderCreated")) {
-                    return "ORDER_CREATED";
-                } else if (methodName.contains("handleOrderCancelled")) {
-                    return "ORDER_CANCELLED";
-                }
-            } else if (className.contains("ProductController")) {
-                return "MANUAL_UPDATE";
-            } else if (className.contains("ProductStockService")) {
-                return "STOCK_UPDATE";
-            }
-        }
-        
-        return "UNKNOWN";
-    }
-    
-    /**
-     * Определить систему-источник по контексту выполнения
-     */
-    private String determineSourceSystem() {
-        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-        
-        for (StackTraceElement element : stackTrace) {
-            String className = element.getClassName();
-            
-            if (className.contains("OrderEventConsumer")) {
-                return "KAFKA";
-            } else if (className.contains("ProductController")) {
-                return "REST_API";
-            } else if (className.contains("ProductStockService")) {
-                return "STOCK_SERVICE";
-            }
-        }
-        
-        return "UNKNOWN";
-    }
-    
-    /**
-     * Определить ID источника по контексту выполнения
-     */
-    private String determineSourceId() {
-        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-        
-        for (StackTraceElement element : stackTrace) {
-            String className = element.getClassName();
-            
-            if (className.contains("OrderEventConsumer")) {
-                return "kafka_event";
-            } else if (className.contains("ProductController")) {
-                return "rest_api";
-            } else if (className.contains("ProductStockService")) {
-                return "stock_service";
-            }
-        }
-        
-        return "unknown";
     }
 }

@@ -3,7 +3,6 @@ package ru.dmitartur.library.marketplace.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import ru.dmitartur.common.security.CryptoStringConverter;
 
 /**
  * Базовая Entity для учетных данных маркетплейсов

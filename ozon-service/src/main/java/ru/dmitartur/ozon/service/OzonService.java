@@ -6,19 +6,18 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import ru.dmitartur.ozon.integration.OzonSellerApi;
-import ru.dmitartur.common.grpc.OrderInternalServiceGrpc;
-import ru.dmitartur.common.grpc.UpsertOrdersRequest;
-import ru.dmitartur.common.grpc.UpsertOrdersResponse;
 import ru.dmitartur.common.dto.OrderDto;
-import ru.dmitartur.library.marketplace.service.BaseMarketplaceService;
 import ru.dmitartur.common.dto.marketplace.DateRangeDto;
+import ru.dmitartur.common.kafka.KafkaTopics;
+import ru.dmitartur.library.marketplace.service.BaseMarketplaceService;
+import ru.dmitartur.ozon.integration.OzonSellerApi;
+import ru.dmitartur.ozon.kafka.OrderSyncProducer;
 import ru.dmitartur.ozon.mapper.OzonOrderMapper;
 import ru.dmitartur.ozon.retry.OzonRetryService;
-import ru.dmitartur.common.security.CompanyContextHolder;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Slf4j
@@ -26,13 +25,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OzonService implements BaseMarketplaceService {
     private final OzonSellerApi api;
-    private final OrderInternalServiceGrpc.OrderInternalServiceBlockingStub orderStub;
+    private final OrderSyncProducer orderSyncProducer;
     private final OzonOrderMapper ozonOrderMapper;
     private final OzonRetryService retryService;
     private final ObjectMapper mapper = new ObjectMapper();
-
-    @Value("${ozon.default-warehouse-id}")
-    private String defaultWarehouseId;
 
     public JsonNode fboPostingList(JsonNode req) {
         return retryService.executeWithRetry(
@@ -61,10 +57,6 @@ public class OzonService implements BaseMarketplaceService {
     public JsonNode updateStock(String offerId, int newQuantity, String warehouseId) {
         if (offerId == null || offerId.isEmpty()) {
             throw new IllegalArgumentException("offerId is required");
-        }
-
-        if(warehouseId == null || warehouseId.isEmpty()) {
-            warehouseId = defaultWarehouseId;
         }
 
         ObjectNode root = mapper.createObjectNode();
@@ -129,19 +121,10 @@ public class OzonService implements BaseMarketplaceService {
                 List<OrderDto> orderDtos = ozonOrderMapper.mapOzonOrdersToDtoList(result);
                 
                 if (!orderDtos.isEmpty()) {
-                    // Отправляем заказы через новый gRPC метод
-                    UpsertOrdersRequest request = UpsertOrdersRequest.newBuilder()
-                            .addAllOrders(orderDtos.stream()
-                                    .map(this::convertOrderDtoToGrpc)
-                                    .toList())
-                            .setCompanyId(CompanyContextHolder.getCompanyId() != null ? 
-                                    CompanyContextHolder.getCompanyId() : "")
-                            .build();
-                    
-                    UpsertOrdersResponse response = orderStub.upsertOrdersDto(request);
-                    totalUpserted += response.getProcessedCount();
-                    
-                    log.info("✅ Processed {} FBO orders, total upserted: {}", size, totalUpserted);
+                    // Отправляем заказы в Kafka как OrderDto без JsonNode
+                    orderDtos.forEach(order -> orderSyncProducer.publishOrder(order.getCompanyId().toString(), order));
+                    totalUpserted += orderDtos.size();
+                    log.info("✅ Published {} FBO orders to Kafka '{}', total published: {}", size, KafkaTopics.ORDER_SYNC_TOPIC, totalUpserted);
                 }
                 
                 // Проверяем, есть ли еще данные
@@ -179,9 +162,10 @@ public class OzonService implements BaseMarketplaceService {
             req.put("offset", offset);
             
             // Фильтр по дате создания - правильный формат согласно документации
+            // Google Protobuf Timestamp требует формат с миллисекундами и временной зоной
             var filter = req.putObject("filter");
-            filter.put("since", range.getFrom());
-            filter.put("to", range.getTo());
+            filter.put("since", formatDateForOzonApi(range.getFrom()));
+            filter.put("to", formatDateForOzonApi(range.getTo()));
                 
                 // Получаем данные от Ozon API
                 log.debug("📤 Sending FBS request: {}", req.toPrettyString());
@@ -221,21 +205,11 @@ public class OzonService implements BaseMarketplaceService {
                 
                 // Преобразуем заказы в OrderDto
                 List<OrderDto> orderDtos = ozonOrderMapper.mapOzonFbsOrdersToDtoList(result);
-                
                 if (!orderDtos.isEmpty()) {
-                    // Отправляем заказы через gRPC метод
-                    UpsertOrdersRequest request = UpsertOrdersRequest.newBuilder()
-                            .addAllOrders(orderDtos.stream()
-                                    .map(this::convertOrderDtoToGrpc)
-                                    .toList())
-                            .setCompanyId(CompanyContextHolder.getCompanyId() != null ? 
-                                    CompanyContextHolder.getCompanyId() : "")
-                            .build();
-                    
-                    UpsertOrdersResponse response = orderStub.upsertOrdersDto(request);
-                    totalUpserted += response.getProcessedCount();
-                    
-                    log.info("✅ Processed {} FBS orders, total upserted: {}", size, totalUpserted);
+                    // Отправляем заказы в Kafka как OrderDto без JsonNode
+                    orderDtos.forEach(order -> orderSyncProducer.publishOrder(order.getCompanyId().toString(), order));
+                    totalUpserted += orderDtos.size();
+                    log.info("✅ Published {} FBS orders to Kafka '{}', total published: {}", size, KafkaTopics.ORDER_SYNC_TOPIC, totalUpserted);
                 }
                 
                 // Проверяем, есть ли еще данные
@@ -254,28 +228,6 @@ public class OzonService implements BaseMarketplaceService {
         
         log.info("✅ FBS backfill finished, total upserted: {} orders", totalUpserted);
         return totalUpserted;
-    }
-
-    /**
-     * Проверить доступность FBS API
-     */
-    public boolean isFbsApiAvailable() {
-        try {
-            var mapper = new ObjectMapper();
-            var req = mapper.createObjectNode();
-            req.put("limit", 1);
-            req.put("offset", 0);
-            
-            var filter = req.putObject("filter");
-            filter.put("since", "2024-08-01T00:00:00Z");
-            filter.put("to", "2024-08-02T23:59:59Z");
-            
-            JsonNode response = fbsPostingList(req);
-            return !response.has("error");
-        } catch (Exception e) {
-            log.warn("⚠️ FBS API not available: {}", e.getMessage());
-            return false;
-        }
     }
 
     /**
@@ -300,13 +252,9 @@ public class OzonService implements BaseMarketplaceService {
             
             // 2. Синхронизация FBS заказов (если API доступен)
             log.info("📦 Step 2: Checking FBS API availability...");
-            if (isFbsApiAvailable()) {
-                log.info("📦 Step 2: Starting FBS orders synchronization...");
-                totalFbsUpserted = backfillFbsOrders(range, pageSize);
-                log.info("✅ FBS synchronization completed: {} orders", totalFbsUpserted);
-            } else {
-                log.warn("⚠️ FBS API not available, skipping FBS synchronization");
-            }
+            log.info("📦 Step 2: Starting FBS orders synchronization...");
+            totalFbsUpserted = backfillFbsOrders(range, pageSize);
+            log.info("✅ FBS synchronization completed: {} orders", totalFbsUpserted);
             
         } catch (InterruptedException e) {
             log.error("❌ Synchronization interrupted: {}", e.getMessage());
@@ -322,85 +270,23 @@ public class OzonService implements BaseMarketplaceService {
         return totalUpserted;
     }
 
+    // gRPC conversion no longer needed after switching to Kafka
+    
     /**
-     * Конвертировать OrderDto в gRPC формат
+     * Форматирует дату для API Ozon в формате Google Protobuf Timestamp
+     * Формат: "2024-01-01T00:00:00.000Z"
      */
-    private ru.dmitartur.common.grpc.OrderDto convertOrderDtoToGrpc(OrderDto orderDto) {
-        var builder = ru.dmitartur.common.grpc.OrderDto.newBuilder()
-                .setPostingNumber(orderDto.getPostingNumber())
-                .setSource(orderDto.getSource())
-                .setMarket(ru.dmitartur.common.grpc.Market.valueOf(orderDto.getMarket().name()))
-                .setStatus(ru.dmitartur.common.grpc.OrderStatus.valueOf(orderDto.getStatus().name()))
-                .setCreatedAt(orderDto.getCreatedAt() != null ? orderDto.getCreatedAt().toString() : "")
-                .setUpdatedAt(orderDto.getUpdatedAt() != null ? orderDto.getUpdatedAt().toString() : "")
-                .setOzonCreatedAt(orderDto.getOzonCreatedAt() != null ? orderDto.getOzonCreatedAt().toString() : "")
-                .setCustomerName(orderDto.getCustomerName() != null ? orderDto.getCustomerName() : "")
-                .setCustomerPhone(orderDto.getCustomerPhone() != null ? orderDto.getCustomerPhone() : "")
-                .setAddress(orderDto.getAddress() != null ? orderDto.getAddress() : "")
-                .setTotalPrice(orderDto.getTotalPrice() != null ? orderDto.getTotalPrice().toString() : "0")
-                .addAllItems(orderDto.getItems().stream()
-                        .map(this::convertOrderItemDtoToGrpc)
-                        .toList());
-        
-        // FBS поля - даты
-        if (orderDto.getInProcessAt() != null) {
-            builder.setInProcessAt(orderDto.getInProcessAt().toString());
+    private String formatDateForOzonApi(String dateString) {
+        try {
+            // Парсим входную дату (предполагаем формат ISO)
+            LocalDateTime dateTime = LocalDateTime.parse(dateString, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            // Форматируем в формат с миллисекундами и Z (UTC)
+            return dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"));
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to parse date '{}', using as-is: {}", dateString, e.getMessage());
+            // Если не удалось распарсить, возвращаем как есть
+            return dateString;
         }
-        if (orderDto.getShipmentDate() != null) {
-            builder.setShipmentDate(orderDto.getShipmentDate().toString());
-        }
-        if (orderDto.getDeliveringDate() != null) {
-            builder.setDeliveringDate(orderDto.getDeliveringDate().toString());
-        }
-        
-        // FBS поля - отмена
-        if (orderDto.getCancelReason() != null) {
-            builder.setCancelReason(orderDto.getCancelReason());
-        }
-        if (orderDto.getCancelReasonId() != null) {
-            builder.setCancelReasonId(orderDto.getCancelReasonId());
-        }
-        if (orderDto.getCancellationType() != null) {
-            builder.setCancellationType(orderDto.getCancellationType());
-        }
-        
-        // FBS поля - доставка
-        if (orderDto.getTrackingNumber() != null) {
-            builder.setTrackingNumber(orderDto.getTrackingNumber());
-        }
-        if (orderDto.getDeliveryMethodName() != null) {
-            builder.setDeliveryMethodName(orderDto.getDeliveryMethodName());
-        }
-        if (orderDto.getSubstatus() != null) {
-            builder.setSubstatus(orderDto.getSubstatus());
-        }
-        if (orderDto.getIsExpress() != null) {
-            builder.setIsExpress(orderDto.getIsExpress());
-        }
-        
-        // Вычисляемые поля
-        if (orderDto.getDaysInTransit() != null) {
-            builder.setDaysInTransit(orderDto.getDaysInTransit());
-        }
-        if (orderDto.getDaysInProcessing() != null) {
-            builder.setDaysInProcessing(orderDto.getDaysInProcessing());
-        }
-        
-        return builder.build();
-    }
-
-    /**
-     * Конвертировать OrderItemDto в gRPC формат
-     */
-    private ru.dmitartur.common.grpc.OrderItemDto convertOrderItemDtoToGrpc(ru.dmitartur.common.dto.OrderItemDto itemDto) {
-        return ru.dmitartur.common.grpc.OrderItemDto.newBuilder()
-                .setProductId(itemDto.getProductId() != null ? itemDto.getProductId() : 0)
-                .setOfferId(itemDto.getOfferId() != null ? itemDto.getOfferId() : "")
-                .setName(itemDto.getName() != null ? itemDto.getName() : "")
-                .setQuantity(itemDto.getQuantity() != null ? itemDto.getQuantity() : 0)
-                .setPrice(itemDto.getPrice() != null ? itemDto.getPrice().toString() : "0")
-                .setSku(itemDto.getSku() != null ? itemDto.getSku() : "")
-                .build();
     }
     
     @Override

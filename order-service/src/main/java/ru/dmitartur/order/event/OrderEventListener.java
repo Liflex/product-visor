@@ -24,7 +24,6 @@ import ru.dmitartur.common.events.EventType;
 @RequiredArgsConstructor
 public class OrderEventListener {
     
-    private final ProductGrpcClient productGrpcClient;
     private final OrderEventProducer orderEventProducer;
     
     /**

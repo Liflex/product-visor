@@ -24,4 +24,12 @@ public interface ProductStockMapper {
     @Mapping(target = "product", ignore = true)
     @Mapping(target = "warehouses", source = "warehouses")
     void updateEntityFromDto(ProductStockDto dto, @MappingTarget ProductStock productStock);
+    
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "userId", ignore = true)
+    @Mapping(target = "product", ignore = true)
+    @Mapping(target = "warehouses", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "version", ignore = true)
+    void updateProductStock(@MappingTarget ProductStock oldProductStock, ProductStock newProductStock);
 }

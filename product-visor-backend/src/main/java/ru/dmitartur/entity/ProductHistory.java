@@ -8,6 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.springframework.data.annotation.CreatedDate;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * История изменений продукта
@@ -44,6 +45,12 @@ public class ProductHistory {
     @Column(name = "source_id")
     private String sourceId; // posting_number, user_id, etc.
     
+    @Column(name = "user_id")
+    private UUID userId; // ID пользователя, который совершил изменение
+    
+    @Column(name = "company_id")
+    private UUID companyId; // ID компании, если применимо
+    
     @Column(name = "created_at", nullable = false)
     @CreationTimestamp
     private LocalDateTime createdAt;
@@ -60,6 +67,21 @@ public class ProductHistory {
         this.changeReason = changeReason;
         this.sourceSystem = sourceSystem;
         this.sourceId = sourceId;
+        this.createdAt = LocalDateTime.now();
+    }
+    
+    public ProductHistory(Long productId, String fieldName, String oldValue, String newValue, 
+                         String changeReason, String sourceSystem, String sourceId,
+                         UUID userId, UUID companyId) {
+        this.productId = productId;
+        this.fieldName = fieldName;
+        this.oldValue = oldValue;
+        this.newValue = newValue;
+        this.changeReason = changeReason;
+        this.sourceSystem = sourceSystem;
+        this.sourceId = sourceId;
+        this.userId = userId;
+        this.companyId = companyId;
         this.createdAt = LocalDateTime.now();
     }
 }

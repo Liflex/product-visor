@@ -1,7 +1,7 @@
 package ru.dmitartur.order.mapper;
 
 import org.mapstruct.Mapper;
-import ru.dmitartur.order.dto.OrderItemDto;
+import ru.dmitartur.common.dto.OrderItemDto;
 import ru.dmitartur.order.entity.OrderItem;
 
 import java.util.List;

@@ -34,8 +34,6 @@ grpc:
 logging:
   level:
     ru.dmitartur.order: DEBUG
-    ru.dmitartur.order.service.ProductGrpcService: DEBUG
-    net.devh.boot.grpc: DEBUG
 
 # Порт приложения
 server:

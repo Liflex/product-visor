@@ -92,4 +92,26 @@ public interface ProductStockRepository extends JpaRepository<ProductStock, UUID
     void updateQuantity(@Param("productId") Long productId, 
                        @Param("warehouseId") UUID warehouseId, 
                        @Param("quantity") Integer quantity);
+    
+    /**
+     * Найти ProductStock по товару, складу и компании
+     * Используется для обновления количества при обработке событий заказов
+     */
+    @Query("SELECT ps FROM ProductStock ps " +
+           "JOIN ps.warehouses w " +
+           "WHERE ps.product.id = :productId AND w.id = :warehouseId AND w.companyId = :companyId")
+    Optional<ProductStock> findByProductIdAndWarehouseIdAndCompanyId(@Param("productId") Long productId, 
+                                                                     @Param("warehouseId") UUID warehouseId, 
+                                                                     @Param("companyId") UUID companyId);
+    
+    /**
+     * Найти ProductStock по артикулу, складу и компании
+     * Используется для обновления количества при обработке событий заказов
+     */
+    @Query("SELECT ps FROM ProductStock ps " +
+           "JOIN ps.warehouses w " +
+           "WHERE ps.product.article = :article AND w.externalWarehouseId = :warehouseId AND w.companyId = :companyId")
+    Optional<ProductStock> findByArticleAndWarehouseIdAndCompanyId(@Param("article") String article, 
+                                                                   @Param("warehouseId") String warehouseId,
+                                                                   @Param("companyId") UUID companyId);
 }

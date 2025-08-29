@@ -10,8 +10,14 @@ public class CompanyHeaderFilter implements Filter {
         try {
             if (request instanceof HttpServletRequest req) {
                 String companyId = req.getHeader("X-Company-Id");
+                String userId = req.getHeader("X-User-Id");
+                
                 if (companyId != null && !companyId.isBlank()) {
                     CompanyContextHolder.setCompanyId(companyId);
+                }
+                
+                if (userId != null && !userId.isBlank()) {
+                    CompanyContextHolder.setUserId(userId);
                 }
             }
             chain.doFilter(request, response);

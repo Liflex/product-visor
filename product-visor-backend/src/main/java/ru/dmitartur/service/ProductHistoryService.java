@@ -14,6 +14,7 @@ import ru.dmitartur.repository.ProductHistoryRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Сервис для работы с историей изменений продукта
@@ -65,6 +66,29 @@ public class ProductHistoryService {
             return saved;
         } catch (Exception e) {
             log.error("❌ Error saving product history with metadata: productId={}, field={}, error={}", 
+                    productId, fieldName, e.getMessage());
+            throw e;
+        }
+    }
+    
+    /**
+     * Сохранить запись об изменении с метаданными и информацией о пользователе
+     */
+    public ProductHistory saveHistoryWithUserInfo(Long productId, String fieldName, String oldValue, String newValue,
+                                                String changeReason, String sourceSystem, String sourceId, String metadata,
+                                                UUID userId, UUID companyId) {
+        try {
+            ProductHistory history = new ProductHistory(productId, fieldName, oldValue, newValue,
+                    changeReason, sourceSystem, sourceId, userId, companyId);
+            history.setMetadata(metadata);
+            
+            ProductHistory saved = repository.save(history);
+            log.info("📝 Saved product history with user info: productId={}, field={}, reason={}, source={}, userId={}, companyId={}", 
+                    productId, fieldName, changeReason, sourceSystem, userId, companyId);
+            
+            return saved;
+        } catch (Exception e) {
+            log.error("❌ Error saving product history with user info: productId={}, field={}, error={}", 
                     productId, fieldName, e.getMessage());
             throw e;
         }

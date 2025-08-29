@@ -5,6 +5,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * DTO для истории изменений продукта
@@ -21,6 +22,8 @@ public class ProductHistoryDto {
     private String changeReason;
     private String sourceSystem;
     private String sourceId;
+    private UUID userId;
+    private UUID companyId;
     private LocalDateTime createdAt;
     private String metadata;
 }

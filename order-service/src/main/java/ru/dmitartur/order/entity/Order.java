@@ -20,7 +20,7 @@ import java.util.UUID;
 @Setter
 @ToString
 @Entity
-@Table(name = "orders", schema = "orders")
+@Table(name = "orders")
 public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,7 +34,7 @@ public class Order {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "market", length = 50)
-    private ru.dmitartur.common.enums.Market market;
+    private Market market;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 50)
@@ -53,6 +53,9 @@ public class Order {
 
     @Column(name = "customer_name")
     private String customerName;
+
+    @Column(name = "warehouse_id")
+    private String warehouseId;
 
     @Column(name = "customer_phone")
     private String customerPhone;

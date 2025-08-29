@@ -24,7 +24,7 @@ public class OrderEventsConsumer {
     private final TelegramClientRepository telegramClientRepository;
     private final TelegramOutgoingProducer telegramOutgoingProducer;
 
-    @KafkaListener(topics = "${kafka.topics.order-events:order-events}", groupId = "telegram-notifications")
+    @KafkaListener(topics = ru.dmitartur.common.kafka.KafkaTopics.ORDER_EVENTS_TOPIC, groupId = "telegram-notifications")
     public void onOrderEvent(String message) {
         try {
             JsonNode event = objectMapper.readTree(message);

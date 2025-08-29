@@ -22,7 +22,7 @@ public class UserEventsConsumer {
     private final TelegramClientService telegramClientService;
     private final BusinessMetrics businessMetrics;
 
-    @KafkaListener(topics = "${oficiant.topics.user-events:user.events}", groupId = "client-service")
+    @KafkaListener(topics = ru.dmitartur.common.kafka.KafkaTopics.USER_EVENTS_TOPIC, groupId = "client-service")
     @Transactional
     public void onUserEvent(String message) {
         try {

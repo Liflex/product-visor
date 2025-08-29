@@ -4,11 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.dmitartur.ozon.entity.SyncCheckpoint;
-import ru.dmitartur.ozon.scheduled.OzonBackfillScheduler;
+import ru.dmitartur.ozon.scheduled.OzonBackfillSchedulerV2;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -18,7 +15,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class SyncController {
 
-    private final OzonBackfillScheduler ozonBackfillScheduler;
+    private final OzonBackfillSchedulerV2 ozonBackfillScheduler;
 
     /**
      * Получить информацию о последней синхронизации

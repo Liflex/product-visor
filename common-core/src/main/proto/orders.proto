@@ -74,10 +74,15 @@ message OrderDto {
   string delivery_method_name = 21;
   string substatus = 22;
   bool is_express = 23;
+  string warehouse_id = 26; // ID склада для управления остатками
   
   // Вычисляемые поля
   int32 days_in_transit = 24;
   int32 days_in_processing = 25;
+  
+  // Контекстные поля
+  string company_id = 27; // UUID компании
+  string owner_user_id = 28; // UUID владельца заказа
 }
 
 // Запрос для upsert заказов

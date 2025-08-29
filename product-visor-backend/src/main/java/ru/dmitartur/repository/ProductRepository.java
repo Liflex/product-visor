@@ -50,11 +50,33 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Page<Product> findByOwnerUserId(UUID ownerUserId, Pageable pageable);
     Page<Product> findByCompanyIdAndOwnerUserId(UUID companyId, UUID ownerUserId, Pageable pageable);
 
-    @Query(value = "SELECT p.* FROM visor.product p JOIN visor.product_search_index psi ON psi.product_id = p.id " +
-            "WHERE psi.searchable_text ILIKE CONCAT('%', :q, '%') " +
-            "ORDER BY similarity(psi.searchable_text, :q) DESC",
-           countQuery = "SELECT COUNT(*) FROM visor.product p JOIN visor.product_search_index psi ON psi.product_id = p.id " +
-                   "WHERE psi.searchable_text ILIKE CONCAT('%', :q, '%')",
+    @Query(value = "SELECT p.* FROM visor.product p " +
+            "JOIN visor.search_products(:q, :limit) sp ON sp.product_id = p.id " +
+            "WHERE p.owner_user_id = :ownerUserId " +
+            "ORDER BY p.id",
+           countQuery = "SELECT COUNT(*) FROM visor.product p " +
+                   "JOIN visor.search_products(:q, :limit) sp ON sp.product_id = p.id " +
+                   "WHERE p.owner_user_id = :ownerUserId",
            nativeQuery = true)
-    Page<Product> searchFullText(@Param("q") String query, Pageable pageable);
+    Page<Product> searchFullText(@Param("q") String query, 
+                                @Param("ownerUserId") UUID ownerUserId,
+                                @Param("limit") int limit,
+                                Pageable pageable);
+
+    /**
+     * Поиск товаров с учетом компании и владельца
+     */
+    @Query(value = "SELECT p.* FROM visor.product p " +
+            "JOIN visor.search_products(:q, :limit) sp ON sp.product_id = p.id " +
+            "WHERE p.owner_user_id = :ownerUserId AND p.company_id = :companyId " +
+            "ORDER BY p.id",
+           countQuery = "SELECT COUNT(*) FROM visor.product p " +
+                   "JOIN visor.search_products(:q, :limit) sp ON sp.product_id = p.id " +
+                   "WHERE p.owner_user_id = :ownerUserId AND p.company_id = :companyId",
+           nativeQuery = true)
+    Page<Product> searchFullTextByCompany(@Param("q") String query, 
+                                         @Param("ownerUserId") UUID ownerUserId,
+                                         @Param("companyId") UUID companyId,
+                                         @Param("limit") int limit,
+                                         Pageable pageable);
 }

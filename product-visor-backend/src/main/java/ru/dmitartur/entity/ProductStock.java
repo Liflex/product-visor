@@ -36,7 +36,7 @@ public class ProductStock {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
     
-    @ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @ManyToMany(fetch = FetchType.EAGER, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinTable(
         name = "product_stock_warehouses",
         joinColumns = @JoinColumn(name = "product_stock_id"),
@@ -69,6 +69,10 @@ public class ProductStock {
     @LastModifiedDate
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    
+    @Version
+    @Column(name = "version")
+    private Long version = 0L;
     
     /**
      * Обновить количество

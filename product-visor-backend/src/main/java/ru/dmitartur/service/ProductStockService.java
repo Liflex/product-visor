@@ -3,21 +3,16 @@ package ru.dmitartur.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.dmitartur.entity.ProductStock;
-import ru.dmitartur.entity.Product;
-import ru.dmitartur.entity.Warehouse;
-import ru.dmitartur.common.enums.ProductStockType;
+import ru.dmitartur.listener.ProductStockEventPublisher;
 import ru.dmitartur.repository.ProductStockRepository;
-import ru.dmitartur.repository.ProductRepository;
-import ru.dmitartur.repository.WarehouseRepository;
 import ru.dmitartur.common.utils.JwtUtil;
-import ru.dmitartur.interceptor.ProductHistoryInterceptor;
 import ru.dmitartur.dto.ProductStockDto;
-import ru.dmitartur.dto.WarehouseDto;
 import ru.dmitartur.mapper.ProductStockMapper;
 
-import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -26,10 +21,10 @@ import java.util.UUID;
 public class ProductStockService {
     
     private final ProductStockRepository productStockRepository;
-    private final ProductHistoryInterceptor productHistoryInterceptor;
     private final ProductStockMapper productStockMapper;
     private final WarehouseService warehouseService;
     private final ProductService productService;
+    private final ProductStockEventPublisher eventPublisher;
     
     /**
      * Получить остатки товара по всем складам пользователя
@@ -82,82 +77,87 @@ public class ProductStockService {
     }
     
     /**
-     * Создать новый остаток товара
+     * Получить ProductStock Entity по ID с проверкой прав доступа
      */
-    public ProductStockDto createProductStock(ProductStockDto productStockDto) {
-        // Проверяем, что товар принадлежит пользователю через ProductService
-        Product product = productService.validateProductOwnership(productStockDto.getProductId());
+    public ProductStock getProductStockEntityById(UUID productStockId) {
+        UUID userId = JwtUtil.getRequiredOwnerId();
         
-        // Проверяем, что все склады принадлежат пользователю через WarehouseService
-        warehouseService.validateWarehousesOwnership(productStockDto.getWarehouses());
+        ProductStock stock = productStockRepository.findById(productStockId)
+                .orElseThrow(() -> new RuntimeException("Остатки товара не найдены"));
         
-        // Создаем новый остаток
-        ProductStock stock = new ProductStock();
-        stock.setProduct(product);
-        stock.setUserId(product.getOwnerUserId());
-        stock.setStockType(productStockDto.getStockType());
-        stock.setQuantity(productStockDto.getQuantity());
-        stock.setNotes(productStockDto.getNotes());
-        stock.setSyncStatus("NEVER_SYNCED");
-        
-        // Добавляем склады
-        if (productStockDto.getWarehouses() != null) {
-            for (WarehouseDto warehouseDto : productStockDto.getWarehouses()) {
-                Warehouse warehouse = warehouseService.getWarehouse(warehouseDto.getId());
-                stock.addWarehouse(warehouse);
-            }
+        if (!stock.getUserId().equals(userId)) {
+            throw new RuntimeException("Остатки товара не принадлежат пользователю");
         }
         
-        ProductStock saved = productStockRepository.save(stock);
+        return stock;
+    }
+    
+    /**
+     * Создать новый остаток товара
+     */
+    @Transactional
+    public ProductStock createProductStock(ProductStock productStock) {
+        ProductStock saved = productStockRepository.save(productStock);
         
-        return productStockMapper.toDto(saved);
+        // Публикуем событие создания
+        if (saved.getQuantity() != null && saved.getQuantity() > 0) {
+            eventPublisher.publishQuantityChangeEventWithContext(saved, 0, saved.getQuantity(), "STOCK_SERVICE", "CREATED");
+        }
+        
+        return saved;
     }
     
     /**
      * Обновить остаток товара
      */
-    public ProductStockDto updateProductStock(UUID productStockId, ProductStockDto productStockDto) {
-        UUID userId = JwtUtil.getRequiredOwnerId();
-        
-        // Получаем существующий остаток
-        ProductStock existingStock = productStockRepository.findById(productStockId)
-                .orElseThrow(() -> new RuntimeException("Остаток товара не найден"));
-        
-        if (!existingStock.getUserId().equals(userId)) {
-            throw new RuntimeException("Остаток товара не принадлежит пользователю");
-        }
+    @Transactional
+    public ProductStock updateProductStock(ProductStock productStock) {
+        // Получаем существующий ProductStock для обновления
+        ProductStock existingStock = productStockRepository.findById(productStock.getId())
+                .orElseThrow(() -> new RuntimeException("ProductStock не найден"));
         
         // Сохраняем старое количество для отслеживания изменений
-        int oldQuantity = existingStock.getQuantity() != null ? existingStock.getQuantity() : 0;
+        Integer oldQuantity = existingStock.getQuantity();
         
-        // Обновляем основные поля
-        existingStock.setStockType(productStockDto.getStockType());
-        existingStock.setQuantity(productStockDto.getQuantity());
-        existingStock.setNotes(productStockDto.getNotes());
+        // Обновляем Entity через маппер
+        productStockMapper.updateProductStock(existingStock, productStock);
         
-        // Очищаем и обновляем склады
-        existingStock.getWarehouses().clear();
-        if (productStockDto.getWarehouses() != null) {
-            for (WarehouseDto warehouseDto : productStockDto.getWarehouses()) {
-                Warehouse warehouse = warehouseService.getWarehouse(warehouseDto.getId());
-                existingStock.addWarehouse(warehouse);
-            }
-        }
-        
-        // Проверяем, что все склады принадлежат пользователю через WarehouseService
-        warehouseService.validateWarehousesOwnership(productStockDto.getWarehouses());
-        
-        existingStock.setLastSyncAt(LocalDateTime.now());
-        existingStock.setSyncStatus("UPDATED");
-        
+        // Сохраняем обновленный Entity
         ProductStock saved = productStockRepository.save(existingStock);
         
-        // Отслеживаем изменение количества, если оно изменилось
-        if (saved.getQuantity() != null && saved.getQuantity() != oldQuantity) {
-            productHistoryInterceptor.trackProductStockQuantityChange(saved, oldQuantity, saved.getQuantity());
+        // Публикуем событие изменения количества, если оно изменилось
+        if (saved.getQuantity() != null && !saved.getQuantity().equals(oldQuantity)) {
+            eventPublisher.publishQuantityChangeEventWithContext(saved, oldQuantity, saved.getQuantity(), "STOCK_SERVICE", "UPDATED");
         }
         
-        return productStockMapper.toDto(saved);
+        return saved;
+    }
+    
+    /**
+     * Обновить остаток товара с контекстом для правильного определения причины изменения
+     */
+    @Transactional
+    public ProductStock updateProductStockWithContext(ProductStock productStock, String sourceSystem, String sourceId) {
+        // Получаем существующий ProductStock для обновления
+        ProductStock existingStock = productStockRepository.findById(productStock.getId())
+                .orElseThrow(() -> new RuntimeException("ProductStock не найден"));
+        
+        // Сохраняем старое количество для отслеживания изменений
+        Integer oldQuantity = existingStock.getQuantity();
+        
+        // Обновляем Entity через маппер
+        productStockMapper.updateProductStock(existingStock, productStock);
+        
+        // Сохраняем обновленный Entity
+        ProductStock saved = productStockRepository.save(existingStock);
+        
+        // Публикуем событие изменения количества, если оно изменилось
+        if (saved.getQuantity() != null && !saved.getQuantity().equals(oldQuantity)) {
+            // Передаем контекст в событие
+            eventPublisher.publishQuantityChangeEventWithContext(saved, oldQuantity, saved.getQuantity(), sourceSystem, sourceId);
+        }
+        
+        return saved;
     }
     
     /**
@@ -174,5 +174,13 @@ public class ProductStockService {
         }
         
         productStockRepository.delete(stock);
+    }
+    
+    /**
+     * Найти ProductStock по артикулу, складу и компании
+     * Используется для обработки событий заказов из Kafka
+     */
+    public Optional<ProductStock> findProductStockByArticleAndWarehouse(String article, String warehouseId, UUID companyId) {
+        return productStockRepository.findByArticleAndWarehouseIdAndCompanyId(article, warehouseId, companyId);
     }
 }
